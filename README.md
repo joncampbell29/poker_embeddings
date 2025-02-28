@@ -5,7 +5,7 @@ This project analyzes **poker flops** using **neural networks**, specifically **
 
 ## Data Generation
 The dataset consists of **all 22,100 possible flops** from a standard 52-card deck. Each card is represented using **one-hot encoding** for:
-- **Rank**: 13 values (2–10, J, Q, K, A)
+- **Rank**: 13 values (2–9, T, J, Q, K, A)
 - **Suit**: 4 values (Spades, Hearts, Clubs, Diamonds)
 
 These encodings are concatenated to create a **"flop vector"**, resulting in a **51-dimensional vector** per flop. 
