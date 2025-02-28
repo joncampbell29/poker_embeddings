@@ -25,6 +25,7 @@ The criteria and index mappings for these attributes are available in **[definit
 ### **Flop: ['5s', '7h', 'Ts']**
 The one-hot encoded vector representation:
 ```
+[rank_vector[13]  suit_vector[4]]
 [0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0.,  1., 0., 0., 0.]+
 [0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0.,  0., 1., 0., 0.]+
 [0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.,  1., 0., 0., 0.]
