@@ -30,6 +30,7 @@ The one-hot encoded vector representation:
 [0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.,  1., 0., 0., 0.]
 ```
 This representation enables the neural network to learn structured relationships between flop configurations.
+To see examples of all the flop attributes refer to [sample_data](sample_data.ipynb).
 
 ## Usage
 1. Generate all possible flops and encode them.
