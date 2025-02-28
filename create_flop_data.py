@@ -7,8 +7,8 @@ from torch.utils.data import Dataset
 from utils import *
 
 
-def flatten_tup(flop_encoding):
-    return np.concatenate([np.concatenate(card) for card in flop_encoding])
+# def flatten_tup(flop_encoding):
+#     return np.concatenate([np.concatenate(card) for card in flop_encoding])
 
 class FlopDataset(Dataset):
     def __init__(self, data=None):
@@ -18,38 +18,38 @@ class FlopDataset(Dataset):
             RANKS = [str(i) for i in range(2,10)] + ['T','J','Q','K','A']
             SUITS = ['s','h','c','d']
 
-            RANKS_DICT = {str(i): i for i in range(2, 10)}
-            RANKS_DICT.update({'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14})
-            SUITS_DICT = {suit: i for i, suit in enumerate(SUITS)}
-
             self.DECK = [rank+suit for rank, suit in product(RANKS, SUITS)]
             
             self.FLOPS = list(combinations(DECK, 3))
+            self.FLOPS = [tuple(sorted(i)) for i in self.FLOPS]
+            
             self.suitedness = torch.tensor([eval_suitedness(flop) for flop in self.FLOPS], dtype=torch.float)
             self.pairness = torch.tensor([eval_pairness(flop) for flop in self.FLOPS], dtype=torch.float)
             self.connectedness = torch.tensor([eval_connectedness(flop) for flop in self.FLOPS], dtype=torch.float)
             self.high_low_texture = torch.tensor([eval_high_low_texture(flop) for flop in self.FLOPS], dtype=torch.float)
             self.high_card = torch.tensor([eval_high_card(flop) for flop in self.FLOPS], dtype=torch.float)
             self.straightness = torch.tensor([eval_straightness(flop) for flop in self.FLOPS], dtype=torch.float)
-        
-            self.DECK_ENCODED = list(product(np.eye(13), np.eye(4)))
-            self.FLOPS_ENCODED = list(combinations(self.DECK_ENCODED, 3))
-            self.FLOPS_ENCODED_CONCAT = torch.tensor(np.array([flatten_tup(i) for i in self.FLOPS_ENCODED]), dtype=torch.float)
+
+            # self.DECK_ENCODED = list(product(np.eye(13), np.eye(4)))
+            # self.FLOPS_ENCODED = list(combinations(self.DECK_ENCODED, 3))
+            # self.FLOPS_ENCODED_CONCAT = torch.tensor(np.array([flatten_tup(i) for i in self.FLOPS_ENCODED]), dtype=torch.float)
         else:
             self.data = data
             
 
     def __len__(self):
         if self.data is None:
-            return self.FLOPS_ENCODED_CONCAT.shape[0]
+            return len(self.FLOPS)
         else:
             return self.data.shape[0]
         
 
     def __getitem__(self, idx):
         if self.data is None:
+            flop_encoded = flop_to_vector(self.FLOPS[idx])
             return (
-                self.FLOPS_ENCODED_CONCAT[idx], 
+                # self.FLOPS_ENCODED_CONCAT[idx], 
+                flop_encoded,
                 self.FLOPS[idx], 
                 self.suitedness[idx], 
                 self.pairness[idx], 
@@ -97,7 +97,8 @@ if __name__ == '__main__':
     data = FlopDataset()
     data_pandas = pd.DataFrame({
         'flop': data.FLOPS,
-        'flop_encoded': data.FLOPS_ENCODED_CONCAT.tolist(),
+        # 'flop_encoded': data.FLOPS_ENCODED_CONCAT.tolist(),
+        'flop_encoded': torch.stack([flop_to_vector(i) for i in data.FLOPS]).tolist(),
         'suitedness': data.suitedness,
         'pairness': data.pairness,
         'connectedness': data.connectedness,
@@ -105,6 +106,7 @@ if __name__ == '__main__':
         'high_card': data.high_card,
         'straightness': data.straightness
         })
+    data_pandas['flop'] = data_pandas['flop'].apply(sorted)
     data_pandas[['card1', 'card2', 'card3']] = data_pandas['flop'].apply(pd.Series)
     data_pandas.to_parquet('flopdata.parquet')
     

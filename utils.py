@@ -1,5 +1,7 @@
 from itertools import product, combinations
 import numpy as np
+import torch
+import torch.nn as nn
 
 with open('one_possible_straights.txt','r') as f:
     ONE_POSSIBLE_STRAIGHT = []
@@ -35,15 +37,21 @@ CONNECTED_FLOPS = ONE_POSSIBLE_STRAIGHT\
 RANKS = [str(i) for i in range(2,10)] + ['T','J','Q','K','A']
 SUITS = ['s','h','c','d']
 
-RANKS_DICT = {str(i): i for i in range(2, 10)}
-RANKS_DICT.update({'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14})
+RANKS_DICT_TRUE = {str(i): i for i in range(2, 10)}
+RANKS_DICT_TRUE.update({'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14})
+
+RANKS_DICT_IDX = {rank: i for i, rank in enumerate(RANKS)}
+RANKS_DICT_IDX_REV = {i: rank for i, rank in enumerate(RANKS)}
+
+
 SUITS_DICT = {suit: i for i, suit in enumerate(SUITS)}
+SUITS_DICT_REV = {j: i for i, j in SUITS_DICT.items()}
 
 DECK = [rank+suit for rank, suit in product(RANKS, SUITS)]
 FLOPS = list(combinations(DECK, 3))
 
 def convert_to_numeric(flop, remove_dups=True):
-    res = [RANKS_DICT[card[:-1]] for card in flop]
+    res = [RANKS_DICT_TRUE[card[:-1]] for card in flop]
     if remove_dups:
         return sorted(set(res))
     else:
@@ -175,3 +183,23 @@ def eval_straightness(flop):
     else:
         return 0
         
+def flop_to_vector(flop: list):
+    fin_arr = []
+    for rank, suit in flop:
+        r = RANKS_DICT_IDX[rank]
+        s = SUITS_DICT[suit]
+        r_one_hot = nn.functional.one_hot(torch.tensor(r), 13)
+        s_one_hot = nn.functional.one_hot(torch.tensor(s), 4)
+        fin_arr.append(torch.cat([r_one_hot, s_one_hot]))
+    return torch.cat(fin_arr)
+
+def flop_look_up(flop: list, df):
+    row = df[df.flop.apply(lambda x: sorted(x) == sorted(flop))]
+    return row.iloc[0] if not row.empty else None
+
+def vec_to_flop(flop_vector):
+    def vec_transfrom(v):
+        return RANKS_DICT_IDX_REV[v[0].argmax().item()] + SUITS_DICT_REV[v[1].argmax().item()] 
+    
+    vec_decomposed = [(v[:13],v[13:]) for v in flop_vector.hsplit(3)]
+    return [vec_transfrom(i) for i in vec_decomposed]
