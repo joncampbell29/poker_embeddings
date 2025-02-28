@@ -19,7 +19,7 @@ Other important properties extracted from each flop include:
 - **High Card**
 - **Straightness**
 
-The criteria and index mappings for these attributes are available in **definitions.txt**, and the functions for computation are in **utils.py**.
+The criteria and index mappings for these attributes are available in **[definitions.txt](definitions.txt)**, and the functions for computation are in **[utils.py](utils.py)**.
 
 ## Example Encoding
 ### **Flop: ['5s', '7h', 'Ts']**
