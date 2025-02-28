@@ -37,7 +37,7 @@
 - **A High (Ahigh)**: 12
 
 #### Straightness Mapping
-This come from [twoplustwo.com](https://forumserver.twoplustwo.com/15/poker-theory-amp-gto/list-connected-flops-1770698/)
+This come from https://forumserver.twoplustwo.com/15/poker-theory-amp-gto/list-connected-flops-1770698/
 - **No Possible**: 0 (No possible straights)
 - **One Possible**: 1 (1 possible straight)
 - **Two Possible**: 2 (2 possible straights)

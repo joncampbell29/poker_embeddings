@@ -50,9 +50,9 @@ def convert_to_numeric(flop, remove_dups=True):
         return sorted(res)
 
 SUITEDNESS_DICT = {
-    'rainbow': 0, # No card of same suit
-    'two_tone': 1, # 2 of 3 of same suit
-    'monotone': 2 # All same suit
+    0: 'rainbow', # No card of same suit
+    1: 'two_tone', # 2 of 3 of same suit
+    2: 'monotone' # All same suit
 }
 
 def eval_suitedness(flop):
@@ -68,10 +68,10 @@ def eval_suitedness(flop):
 
 
 PAIRNESS_DICT = {
-    'high_pair': 3, # AAx-JJx
-    'middle_pair': 2, # TTx-77x
-    'low_pair': 1, # 66x-22x
-    'unpaired': 0 # No pair
+    3: 'high_pair', # AAx-JJx
+    2: 'middle_pair', # TTx-77x
+    1: 'low_pair', # 66x-22x
+    0: 'unpaired' # No pair
 }
 
 def eval_pairness(flop):
@@ -95,10 +95,10 @@ def eval_pairness(flop):
         return 1  # 'low_pair'
     
 
-CONNECTEDNESS = {
-    'three_connected': 2,
-    'two_connected': 1,
-    'disconnected': 0
+CONNECTEDNESS_DICT = {
+    2: 'three_connected',
+    1: 'two_connected',
+    0: 'disconnected'
 }
 
 def eval_connectedness(flop):
@@ -117,9 +117,9 @@ def eval_connectedness(flop):
 
 
 HIGH_LOW_TEXTURE_DICT = {
-    'low': 0, # 2 or 3 cards <= 8
-    'middle': 1, # neither high or low
-    'high': 2 # 2 or 3 broadway cards (T, J, Q, K, A)
+    0: 'low', # 2 or 3 cards <= 8
+    1: 'middle', # neither high or low
+    2: 'high' # 2 or 3 broadway cards (T, J, Q, K, A)
 }
 
 def eval_high_low_texture(flop):
@@ -138,19 +138,19 @@ def eval_high_low_texture(flop):
         return 1 # 'middle'
 
 HIGH_CARD_DICT = {
-    '2high': 0, # 2 high
-    '3high': 1, # 3 high
-    '4high': 2, # 4 high
-    '5high': 3, # 5 high
-    '6high': 4, # 6 high
-    '7high': 5, # 7 high
-    '8high': 6, # 8 high
-    '9high': 7, # 9 high
-    'Thigh': 8, # 10 high
-    'Jhigh': 9, # J high
-    'Qhigh': 10, # Q high
-    'Khigh': 11, # K high
-    'Ahigh': 12 # A high
+    0: '2high', # 2 high
+    1: '3high', # 3 high
+    2: '4high', # 4 high
+    3: '5high', # 5 high
+    4: '6high', # 6 high
+    5: '7high', # 7 high
+    6: '8high', # 8 high
+    7: '9high', # 9 high
+    8: 'Thigh', # 10 high
+    9: 'Jhigh', # J high
+    10: 'Qhigh', # Q high
+    11: 'Khigh', # K high
+    12: 'Ahigh' # A high
     }
 
 def eval_high_card(flop):
@@ -158,10 +158,10 @@ def eval_high_card(flop):
     return flop_numeric[-1] - 2
 
 STRAIGHTNESS_DICT = {
-    'no_possible': 0, # no possible straights
-    'one_possible': 1, # 1 possible straight
-    'two_possible': 2, # 2 possible straights
-    'three_possible': 3 # 3 possible straights
+    0: 'no_possible', # no possible straights
+    1: 'one_possible', # 1 possible straight
+    2: 'two_possible', # 2 possible straights
+    3: 'three_possible' # 3 possible straights
 }
 
 def eval_straightness(flop):
