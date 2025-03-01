@@ -42,7 +42,12 @@ RANKS_DICT_TRUE.update({'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14})
 
 RANKS_DICT_IDX = {rank: i for i, rank in enumerate(RANKS)}
 RANKS_DICT_IDX_REV = {i: rank for i, rank in enumerate(RANKS)}
-
+VECTOR_IDX_DICT = RANKS_DICT_IDX_REV.copy()
+VECTOR_IDX_DICT.update({13:'s',14:'h',15:'c',16:'d',
+                        17:'2',18:'3',19:'4',20:'5',21:'6',22:'7',23:'8',24:'9',25:'T',26:'J',27:'Q',28:'K',29:'A',
+                        30:'s',31:'h',32:'c',33:'d',
+                        34:'2',35:'3',36:'4',37:'5',38:'6',39:'7',40:'8',41:'9',42:'T',43:'J',44:'Q',45:'K',46:'A',
+                        47:'s',48:'h',49:'c',50:'d'})
 
 SUITS_DICT = {suit: i for i, suit in enumerate(SUITS)}
 SUITS_DICT_REV = {j: i for i, j in SUITS_DICT.items()}
@@ -184,6 +189,7 @@ def eval_straightness(flop):
         return 0
         
 def flop_to_vector(flop: list):
+    flop.sort()
     fin_arr = []
     for rank, suit in flop:
         r = RANKS_DICT_IDX[rank]
@@ -202,4 +208,4 @@ def vec_to_flop(flop_vector):
         return RANKS_DICT_IDX_REV[v[0].argmax().item()] + SUITS_DICT_REV[v[1].argmax().item()] 
     
     vec_decomposed = [(v[:13],v[13:]) for v in flop_vector.hsplit(3)]
-    return [vec_transfrom(i) for i in vec_decomposed]
+    return sorted([vec_transfrom(i) for i in vec_decomposed])
