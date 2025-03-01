@@ -100,5 +100,5 @@ if __name__ == '__main__':
         })
     data_pandas['flop'] = data_pandas['flop'].apply(sorted)
     data_pandas[['card1', 'card2', 'card3']] = data_pandas['flop'].apply(pd.Series)
-    data_pandas.to_parquet('flopdata.parquet')
+    data_pandas.to_parquet('data/flopdata.parquet')
     
