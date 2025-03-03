@@ -188,8 +188,13 @@ def eval_straightness(flop):
     else:
         return 0
         
-def flop_to_vector(flop: list):
-    flop.sort()
+def flop_to_vector(f: list):
+    if isinstance(f, tuple):
+        flop = sorted(list(f))
+    elif isinstance(f, str):
+        flop = sorted([f[:2], f[2:4], f[4:]])
+    else:
+        flop = sorted(f)
     fin_arr = []
     for rank, suit in flop:
         r = RANKS_DICT_IDX[rank]
@@ -203,9 +208,13 @@ def flop_look_up(flop: list, df):
     row = df[df.flop.apply(lambda x: sorted(x) == sorted(flop))]
     return row.iloc[0] if not row.empty else None
 
-def vec_to_flop(flop_vector):
+def vec_to_flop(flop_vector, ret_string=False):
     def vec_transfrom(v):
         return RANKS_DICT_IDX_REV[v[0].argmax().item()] + SUITS_DICT_REV[v[1].argmax().item()] 
     
     vec_decomposed = [(v[:13],v[13:]) for v in flop_vector.hsplit(3)]
-    return sorted([vec_transfrom(i) for i in vec_decomposed])
+    sorted_flop = sorted([vec_transfrom(i) for i in vec_decomposed])
+    if ret_string:
+        return "".join(sorted_flop)
+    else:
+        return sorted_flop
