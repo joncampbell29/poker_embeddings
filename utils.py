@@ -23,8 +23,10 @@ def idx_to_card(card_idx):
     return DECK[card_idx]
 
 def get_suit_idx(card):
-    if isinstance(card, int):
+    if isinstance(card, (int, np.integer)):
         return card % 4
+    elif isinstance(card, torch.Tensor):
+        return (card % 4).item()
     elif isinstance(card, str):
         return SUITS.index(card[1])
     else:
