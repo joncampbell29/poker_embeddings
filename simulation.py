@@ -4,44 +4,43 @@ from itertools import product
 import random
 
 
-def simulate_hand(hole_cards: list, num_villans: int = 1, num_sims: int= 1_000):
+def simulate_hand(hole_cards: list, num_villans: int = 1, num_sims: int = 1_000):
     ''' 
-    returns (flop_win_rate, turn_win_rate, river_win_rate)
+    returns (river_win_rate)
     '''
     hero_hole_cards = [Card.new(c) for c in hole_cards]
     evaluator = Evaluator()
-    flop_wins = 0
-    turn_wins = 0
+    # flop_wins = 0
+    # turn_wins = 0
     river_wins = 0
+    RANKS = '23456789TJQKA'
+    SUITS = 'cdhs'
+    DECK = [rank+suit for rank, suit in product(RANKS, SUITS)]
+    for card in hole_cards:
+        DECK.remove(card)
+    DECK = [Card.new(c) for c in DECK]
+    
     for _ in range(num_sims):
-        RANKS = '23456789TJQKA'
-        SUITS = 'cdhs'
-        DECK = [rank+suit for rank, suit in product(RANKS, SUITS)]
-        random.shuffle(DECK)
-        for card in hole_cards:
-            DECK.remove(card)
-        opponent_hands = []
-        for _ in range(num_villans):
-            villain_cards = [Card.new(DECK.pop()), Card.new(DECK.pop())]
-            opponent_hands.append(villain_cards)
+        deck = DECK[:]
+        random.shuffle(deck)
         
-        board = [Card.new(DECK.pop()) for _ in range(5)]
-        flop = board[:3]
-        turn = [board[4]]
+        opponent_hands = [[deck.pop(), deck.pop()] for _ in range(num_villans)]
         
-        hero_flop_score = evaluator.evaluate(board=flop, hand=hero_hole_cards)
-        villian_flop_score = [evaluator.evaluate(board=flop, hand=hand) for hand in opponent_hands]
-        if hero_flop_score < np.min(villian_flop_score):
-            flop_wins += 1
+        board = [deck.pop() for _ in range(5)]
+        # flop = board[:3]
+        # turn = [board[4]]
         
-        hero_turn_score = evaluator.evaluate(board=flop+turn, hand=hero_hole_cards)
-        villian_turn_score = [evaluator.evaluate(board=flop+turn, hand=hand) for hand in opponent_hands]
-        if hero_turn_score < np.min(villian_turn_score):
-            turn_wins += 1
+        # hero_flop_score = evaluator.evaluate(board=flop, hand=hero_hole_cards)
+        # if hero_flop_score < min(evaluator.evaluate(board=flop, hand=hand) for hand in opponent_hands):
+        #     flop_wins += 1
+        
+        # hero_turn_score = evaluator.evaluate(board=flop+turn, hand=hero_hole_cards)
+        # if hero_turn_score < min(evaluator.evaluate(board=flop+turn, hand=hand) for hand in opponent_hands):
+        #     turn_wins += 1
             
         hero_river_score = evaluator.evaluate(board=board, hand=hero_hole_cards)
-        villian_river_score = [evaluator.evaluate(board=board, hand=hand) for hand in opponent_hands]
-        if hero_river_score < np.min(villian_river_score):
+        if hero_river_score < min(evaluator.evaluate(board=board, hand=hand) for hand in opponent_hands):
             river_wins += 1
             
-    return flop_wins / num_sims, turn_wins / num_sims, river_wins/ num_sims
+            #flop_wins / num_sims, turn_wins / num_sims, 
+    return river_wins/ num_sims
