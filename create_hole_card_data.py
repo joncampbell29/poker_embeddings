@@ -1,6 +1,8 @@
 from simulation import simulate_hand
 from constants import HOLE_CARDS, HOLE_CARD_DICT
 import pandas as pd
+import argparse
+from tqdm import tqdm
 
 def card_distance(hand):
     rank_values = {
@@ -37,12 +39,17 @@ def normalize_hand_row(row):
     return f"{ranks[0]}{ranks[1]}{suffix}"
 
 if __name__ == "__main__":
-    num_sims = 1_000
-    num_villans = 1
+    parser = argparse.ArgumentParser(description='Simulate poker hands and Calculate win rates')
+    parser.add_argument('--sims', type=int, default=1000, help='Number of simulations to run (default: 1000)')
+    parser.add_argument('--villains', type=int, default=1, help='Number of opponents (default: 1)')
+    args = parser.parse_args()
+    
+    num_sims = args.sims
+    num_villains = args.villains
     res = []
-    for hole_cards in HOLE_CARDS:
+    for hole_cards in tqdm(HOLE_CARDS, desc="Processing Hands"):
         hole_cards = sorted(hole_cards)
-        river_win_rate = simulate_hand(hole_cards, num_villans=num_villans, num_sims=num_sims)
+        river_win_rate = simulate_hand(hole_cards, num_villans=num_villains, num_sims=num_sims)
         res.append({
             'hole_card1': hole_cards[0],
             'hole_card2': hole_cards[1],
