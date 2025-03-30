@@ -9,7 +9,7 @@ SUITS_DICT = {i:suit for i,suit in enumerate(SUITS)}
 DECK_DICT = {i:card for i,card in enumerate(DECK)}
 HOLE_CARDS = list(combinations(DECK, 2))
 
-def normalize_hand(hole_cards):
+def normalize_hand(hole_cards: tuple):
     card1, card2 = hole_cards
     rank1 = card1[0]
     rank2 = card2[0]
