@@ -171,4 +171,3 @@ cython_debug/
 .pypirc
 
 data/
-hand_embedding_weights/
