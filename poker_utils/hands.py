@@ -1,4 +1,4 @@
-from constants import DECK_DICT, HANDS
+from poker_utils.constants import DECK_DICT, HANDS
 from itertools import combinations, product
 import numpy as np
 

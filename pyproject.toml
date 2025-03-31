@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "poker_utils"
+version = "0.1.0"
+description = "Embeddings for Texas Hold'em poker hands"
+requires-python = ">=3.8"
+dependencies = [
+    "pyyaml",
+    "numpy",
+    "treys"
+]

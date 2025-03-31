@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from constants import HANDS_DICT
+from poker_utils.constants import HANDS_DICT
 from itertools import product
 import pandas as pd
 from tqdm import tqdm
