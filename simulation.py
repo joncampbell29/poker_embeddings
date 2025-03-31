@@ -5,7 +5,7 @@ import random
 from utils import get_possible_hands
 
 
-def simulate_hand_randrange(hand: str, evaluator, num_villans: int = 1, num_sims: int = 1):
+def simulate_hand_randrange(hand: str, evaluator, num_villans: int = 1, num_sims: int = 1000):
     ''' 
     Simulates Hand vs random range (any 2 cards)
     Hand Format is ranks + suited/offsuit. i.e. AAo, KKo, 76s, 76o
@@ -39,19 +39,22 @@ def simulate_hand_randrange(hand: str, evaluator, num_villans: int = 1, num_sims
         turn = [board[4]]
         
         hero_flop_score = evaluator.evaluate(board=flop, hand=hero_sampled_hand)
-        tot_flop_score += hero_flop_score
+        
         if hero_flop_score < min(evaluator.evaluate(board=flop, hand=hand) for hand in opponent_hands):
             flop_wins += 1
+            tot_flop_score += hero_flop_score
         
         hero_turn_score = evaluator.evaluate(board=flop+turn, hand=hero_sampled_hand)
-        tot_turn_score += hero_turn_score
+        
         if hero_turn_score < min(evaluator.evaluate(board=flop+turn, hand=hand) for hand in opponent_hands):
             turn_wins += 1
+            tot_turn_score += hero_turn_score
             
         hero_river_score = evaluator.evaluate(board=board, hand=hero_sampled_hand)
-        tot_river_score += hero_river_score
+        
         if hero_river_score < min(evaluator.evaluate(board=board, hand=hand) for hand in opponent_hands):
             river_wins += 1
+            tot_river_score += hero_river_score
             
     return {
         'hand': hand, 
