@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from constants import HOLE_CARD_DICT
+from constants import HANDS_DICT
 from itertools import product
 import pandas as pd
 from tqdm import tqdm
@@ -58,7 +58,7 @@ def parse_hand_hand_html(soup_html):
     
 if __name__ == "__main__":
     res = []
-    for hand1, hand2 in tqdm(product(HOLE_CARD_DICT.values(), HOLE_CARD_DICT.values())):
+    for hand1, hand2 in tqdm(product(HANDS_DICT.values(), HANDS_DICT.values())):
         if hand1[0] == hand1[1]:
             hand1 = hand1[:2]
         

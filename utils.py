@@ -1,60 +1,27 @@
-from constants import CardType, DECK, HOLE_CARD_DICT, HOLE_CARDS, normalize_hand
-from dataclasses import dataclass, field
+from constants import DECK_DICT, HANDS
 from itertools import combinations, product
-from typing import List
 import numpy as np
-import torch
 
-@dataclass
-class Card:
-    card: CardType
-    rank: str = field(init=False)
-    suit: str = field(init=False)
-    rank_idx: int = field(init=False)
-    suit_idx: int = field(init=False)
-    idx: int = field(init=False)
-    
-    def __post_init__(self):
-        self.rank = self.card[0]
-        self.suit = self.card[1]
-        self.rank_idx = '23456789TJQKA'.index(self.rank)
-        self.suit_idx = 'cdhs'.index(self.suit)
-        self.idx = self.rank_idx * 4 + self.suit_idx
+def normalize_hand(hand: tuple):
+    card1, card2 = hand
+    rank1 = card1[0]
+    rank2 = card2[0]
+    suit1 = card1[1]
+    suit2 = card2[1]
+    ranks = [rank1, rank2]
+    ranks.sort(key=lambda x: '23456789TJQKA'.index(x), reverse=True)
 
-@dataclass
-class Hand:
-    hand: List[CardType] = field(default_factory=list)
-    cards: List[Card] = field(init=False, default_factory=list)
-    vector: torch.Tensor = field(init=False)
-    rank_vector: torch.Tensor = field(init=False)
-    suit_vector: torch.Tensor = field(init=False)
+    suffix = 's' if suit1 == suit2 else 'o'
+    return f"{ranks[0]}{ranks[1]}{suffix}"
     
-    def __post_init__(self):
-        self.cards = [Card(c) for c in self.hand]
-        self.vector = torch.tensor([c.idx for c in self.cards], dtype=torch.long)
-        self.rank_vector = torch.tensor([c.rank_idx for c in self.cards], dtype=torch.long)
-        self.suit_vector = torch.tensor([c.suit_idx for c in self.cards], dtype=torch.long)
-
-# def card_distance(hole_cards: List[Card]):
-#     rank_nums = [hole_cards[0].rank_idx, hole_cards[1].rank_idx]
-#     distance = abs(rank_nums[0] - rank_nums[1])
-#     alt_distance = None
-#     if 12 in rank_nums:
-#         other_rank = rank_nums[0] if rank_nums[1] == 12 else rank_nums[1]
-#         alt_distance = abs(-1 - other_rank)
-#     if alt_distance is not None:
-#         return min(distance, alt_distance)
-#     else:
-#         return distance
-    
-def get_possible_hands(hand):
+def get_possible_hands(hand: str):
     ''' 
     Takes a hand in the rank + suited/offsuit format (i.e JJo, 76s)
     and returns the hands in the deck statisfying it
     i.e. AAo -> [('Ac', 'Ad'),('Ac', 'Ah'), ('Ac', 'As'), ('Ad', 'Ah'), ('Ad', 'As'), ('Ah', 'As')]
     '''
     if hand[0]==hand[1]:
-        return list(combinations([card for card in DECK if hand[0] in card], 2))
+        return list(combinations([card for card in DECK_DICT.values() if hand[0] in card], 2))
     else:
         if hand[-1] == 's':
             filter_func = lambda x:x[0][-1] == x[1][-1]
@@ -66,7 +33,7 @@ def get_possible_hands(hand):
             )
         return list(filter(filter_func, combos))
 
-def find_blocked_hands(hand):
+def find_blocked_hands(hand: str):
     ''' 
     Returns dictionary of hands if blocks and the number of combos it blocks
     '''
@@ -79,7 +46,7 @@ def find_blocked_hands(hand):
         
     blocked_hands = []
     
-    for possible_hand in HOLE_CARDS:
+    for possible_hand in HANDS:
         if possible_hand == hand:
             continue
             
@@ -90,7 +57,7 @@ def find_blocked_hands(hand):
     blocked_combos_dict = {i:j for i,j in zip(hands, counts)}
     return blocked_combos_dict
 
-def find_dominated_hands(hand):
+def find_dominated_hands(hand: str):
     if hand[-1] == "s":
         card1 = hand[0]+"c"
         card2 = hand[1]+"c"
@@ -103,7 +70,7 @@ def find_dominated_hands(hand):
     card_ranks = '23456789TJQKA'
     
     dominated_hands = []
-    for possible_hand in HOLE_CARDS:
+    for possible_hand in HANDS:
         # Skip the hand itself
         if possible_hand == hand:
             continue
@@ -141,4 +108,6 @@ def find_dominated_hands(hand):
     
     dominated_combos_dict = {i:j for i,j in zip(hands, counts)}
     return dominated_combos_dict
+    
+    
     

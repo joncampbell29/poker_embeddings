@@ -83,8 +83,7 @@ def simulate_hand_hand(hand1, hand2, evaluator, num_sims=1000):
     
     RANKS = '23456789TJQKA'
     SUITS = 'cdhs'
-    DECK = [rank+suit for rank, suit in product(RANKS, SUITS)]
-    DECK = [Card.new(c) for c in DECK]
+    DECK = [Card.new(rank+suit) for rank, suit in product(RANKS, SUITS)]
     h1_wins = 0
     h2_wins = 0
     for _ in range(num_sims):

@@ -1,5 +1,5 @@
 from simulation import simulate_hand_randrange
-from constants import HOLE_CARDS, HOLE_CARD_DICT
+from constants import HANDS_DICT
 import pandas as pd
 import argparse
 from treys import Evaluator
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     num_villains = args.villains
     res = []
     evaluator = Evaluator()
-    for hand_idx, hand in tqdm(HOLE_CARD_DICT.items(), desc="Processing Hands"):
+    for hand_idx, hand in tqdm(HANDS_DICT.items(), desc="Processing Hands"):
         hand_res = simulate_hand_randrange(
             hand, evaluator=evaluator, num_villans=num_villains, num_sims=num_sims)
         hand_res['hand_idx'] = hand_idx
