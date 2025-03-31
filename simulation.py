@@ -2,7 +2,7 @@ import numpy as np
 from treys import Card, Evaluator
 from itertools import product
 import random
-from utils import get_possible_hands
+from poker_utils import get_possible_hands
 
 
 def simulate_hand_randrange(hand: str, evaluator, num_villans: int = 1, num_sims: int = 1000):
