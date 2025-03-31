@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from constants import HOLE_CARD_DICT
-from itertools import combinations
+from itertools import product
 import pandas as pd
 from tqdm import tqdm
 
@@ -58,7 +58,7 @@ def parse_hand_hand_html(soup_html):
     
 if __name__ == "__main__":
     res = []
-    for hand1, hand2 in tqdm(combinations(HOLE_CARD_DICT.values(), 2)):
+    for hand1, hand2 in tqdm(product(HOLE_CARD_DICT.values(), HOLE_CARD_DICT.values())):
         if hand1[0] == hand1[1]:
             hand1 = hand1[:2]
         
@@ -69,9 +69,11 @@ if __name__ == "__main__":
         if resp.status_code != 200:
             url = f"https://cardfight.com/{hand2}_{hand1}.html"
             resp = requests.get(url)
-    
-        soup = BeautifulSoup(resp.content, 'html.parser')
-        hand_hand_data = parse_hand_hand_html(soup)
+        if resp.status_code == 200:
+            soup = BeautifulSoup(resp.content, 'html.parser')
+            hand_hand_data = parse_hand_hand_html(soup)
+        else:
+            hand_hand_data = {'not_found_hand1': hand1,'not_found_hand2': hand2}
         res.append(hand_hand_data)
     equity_df = pd.json_normalize(res)
     equity_df.to_csv("data/equity_data.csv", index=False)
