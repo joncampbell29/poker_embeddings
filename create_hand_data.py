@@ -1,4 +1,4 @@
-from simulation import simulate_hand_randrange
+from sim_utils import simulate_hand_randrange
 from constants import HANDS_DICT
 import pandas as pd
 import argparse
