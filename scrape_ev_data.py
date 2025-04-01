@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import os
 
 base_url = "https://flopturnriver.com/poker-strategy/texas-holdem-expected-value-hand-charts-"
 url_dict = {
@@ -50,3 +51,23 @@ for num_players, data in url_dict.items():
         pulled_dat['hand'] = pulled_dat['hand'].str.replace(" ","").apply(
             lambda x: x if x.endswith(('o','s')) else x + 'o')
         pulled_dat.to_excel(save_path, index=False)
+        
+path_to_ev_dat = "data/raw/ev_data/"
+
+dfs = []
+for rel_path in os.listdir(path_to_ev_dat):
+    num_players = int(rel_path.removeprefix("hand_ev").removesuffix(".xlsx"))
+    full_path = path_to_ev_dat+rel_path
+    dat = pd.read_excel(full_path)
+    dat_melted = dat.melt(
+        id_vars=['hand'],
+        value_vars=dat.columns[1:],
+        var_name='position',
+        value_name='EV'
+        )
+    dat_melted['players'] = num_players
+    dfs.append(dat_melted)
+
+full_ev_data = pd.concat(dfs, ignore_index=True)
+
+full_ev_data.to_excel("data/raw/hand_ev_full.xlsx", index=False)

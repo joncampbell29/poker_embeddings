@@ -1,28 +1,12 @@
 from poker_utils.simulation import simulate_hand_randrange
+from poker_utils.hands import card_distance
 from poker_utils.constants import HANDS_DICT
 import pandas as pd
 import argparse
 from treys import Evaluator
 from tqdm import tqdm
 
-def card_distance(hand):
-    rank_values = {
-        '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
-        'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
-    }
-    rank1, rank2 = hand[0], hand[1]
-    value1 = rank_values[rank1]
-    value2 = rank_values[rank2]
-    standard_sep = abs(value1 - value2)
-    if rank1 == 'A' or rank2 == 'A':
-        if rank1 == 'A':
-            alt_sep = abs(1 - value2)
-        else:
-            alt_sep = abs(value1 - 1)
-        
-        return min(standard_sep, alt_sep)
-    else:
-        return standard_sep
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Simulate poker hands')
