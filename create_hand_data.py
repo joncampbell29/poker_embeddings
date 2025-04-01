@@ -31,4 +31,4 @@ if __name__ == "__main__":
     df['suited'] = df['hand'].str.endswith('s').astype(int)
     df['pair'] = (df['hand'].str[0] == df['hand'].str[1]).astype(int)
 
-    df.to_csv("data/hand_data.csv", index=False)
+    df.to_csv("data/raw/hand_data.csv", index=False)

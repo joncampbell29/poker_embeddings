@@ -171,3 +171,4 @@ cython_debug/
 .pypirc
 
 data/
+create_similarity_labels.py

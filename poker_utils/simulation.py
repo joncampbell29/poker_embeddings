@@ -15,8 +15,18 @@ def simulate_hand_randrange(hand: str, evaluator, num_villans: int = 1, num_sims
     hero_possible_treys = [(Card.new(hand[0]), Card.new(hand[1])) for hand in hero_possible_hands]
     
     flop_wins = 0
+    flop_losses = 0
+    flop_ties = 0
+    
     turn_wins = 0
+    turn_losses = 0
+    turn_ties = 0
+    
     river_wins = 0
+    river_losses = 0
+    river_ties = 0
+    
+    
     tot_flop_score = 0
     tot_turn_score = 0
     tot_river_score = 0
@@ -39,29 +49,45 @@ def simulate_hand_randrange(hand: str, evaluator, num_villans: int = 1, num_sims
         turn = [board[4]]
         
         hero_flop_score = evaluator.evaluate(board=flop, hand=hero_sampled_hand)
-        
         if hero_flop_score < min(evaluator.evaluate(board=flop, hand=hand) for hand in opponent_hands):
             flop_wins += 1
             tot_flop_score += hero_flop_score
+        elif hero_flop_score == min(evaluator.evaluate(board=flop, hand=hand) for hand in opponent_hands):
+            flop_ties += 1
+        # elif hero_flop_score > min(evaluator.evaluate(board=flop, hand=hand) for hand in opponent_hands):
+        #     flop_losses += 1
+        
         
         hero_turn_score = evaluator.evaluate(board=flop+turn, hand=hero_sampled_hand)
-        
         if hero_turn_score < min(evaluator.evaluate(board=flop+turn, hand=hand) for hand in opponent_hands):
             turn_wins += 1
             tot_turn_score += hero_turn_score
+        elif hero_turn_score == min(evaluator.evaluate(board=flop+turn, hand=hand) for hand in opponent_hands):
+            turn_ties += 1
+        # elif hero_turn_score > min(evaluator.evaluate(board=flop+turn, hand=hand) for hand in opponent_hands):
+        #     turn_losses += 1
+        
             
         hero_river_score = evaluator.evaluate(board=board, hand=hero_sampled_hand)
-        
         if hero_river_score < min(evaluator.evaluate(board=board, hand=hand) for hand in opponent_hands):
             river_wins += 1
             tot_river_score += hero_river_score
+        elif hero_river_score == min(evaluator.evaluate(board=board, hand=hand) for hand in opponent_hands):
+            river_ties +=1
+        # elif hero_river_score > min(evaluator.evaluate(board=board, hand=hand) for hand in opponent_hands):
+        #     river_losses += 1
+        
             
+        flop_equity = (flop_wins + (flop_ties / 2)) / num_sims
+        turn_equity = (turn_wins + (turn_ties / 2)) / num_sims
+        river_equity = (river_wins + (river_ties / 2)) / num_sims
+        
     return {
         'hand': hand, 
-        "win_perc": {
-            'flop': flop_wins / num_sims,
-            'turn': turn_wins / num_sims,
-            'river': river_wins / num_sims
+        "equity": {
+            'flop': flop_equity,
+            'turn': turn_equity,
+            'river': river_equity
             },
         'avg_score': {
             'flop': tot_flop_score / num_sims,
