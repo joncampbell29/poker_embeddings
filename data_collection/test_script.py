@@ -1,5 +1,5 @@
-
-
 import os
 
-print(os.listdir("../data"))
+
+if __name__ == '__main__':
+    pass

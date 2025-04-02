@@ -38,36 +38,47 @@ url_dict = {
     }
 
 
-for num_players, data in url_dict.items():
-    url = data['url']
-    colnames = data['colnames']
-    save_path = data['save_path']
-    resp = requests.get(url)
-    if resp.status_code != 200:
-        print("Failed: ", num_players)
-    else:
-        pulled_dat = pd.read_html(resp.content)[0].iloc[3:,:]
-        pulled_dat.columns = colnames
-        pulled_dat['hand'] = pulled_dat['hand'].str.replace(" ","").apply(
-            lambda x: x if x.endswith(('o','s')) else x + 'o')
-        pulled_dat.to_excel(save_path, index=False)
-        
-path_to_ev_dat = "data/raw/ev_data/"
+if __name__ == '__main__':
+    
+    data_dir = "./data"
+    raw_dir = os.path.join(data_dir, "raw")
+    ev_data_dir = os.path.join(raw_dir, "ev_data")
+    
+    for directory in [data_dir, raw_dir, ev_data_dir]:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            
+    for num_players, data in url_dict.items():
+        url = data['url']
+        colnames = data['colnames']
+        save_path = data['save_path']
+        resp = requests.get(url)
+        if resp.status_code != 200:
+            print("Failed: ", num_players)
+        else:
+            pulled_dat = pd.read_html(resp.content)[0].iloc[3:,:]
+            pulled_dat.columns = colnames
+            pulled_dat['hand'] = pulled_dat['hand'].str.replace(" ","").apply(
+                lambda x: x if x.endswith(('o','s')) else x + 'o')
+            pulled_dat.to_excel(save_path, index=False)
 
-dfs = []
-for rel_path in os.listdir(path_to_ev_dat):
-    num_players = int(rel_path.removeprefix("hand_ev").removesuffix(".xlsx"))
-    full_path = path_to_ev_dat+rel_path
-    dat = pd.read_excel(full_path)
-    dat_melted = dat.melt(
-        id_vars=['hand'],
-        value_vars=dat.columns[1:],
-        var_name='position',
-        value_name='EV'
-        )
-    dat_melted['players'] = num_players
-    dfs.append(dat_melted)
+    dfs = []
+    for rel_path in os.listdir(ev_data_dir):
+        num_players = int(rel_path.removeprefix("hand_ev").removesuffix(".xlsx"))
+        full_path = os.path.join(ev_data_dir, rel_path)
+        dat = pd.read_excel(full_path)
+        dat_melted = dat.melt(
+            id_vars=['hand'],
+            value_vars=dat.columns[1:],
+            var_name='position',
+            value_name='EV'
+            )
+        dat_melted['players'] = num_players
+        dfs.append(dat_melted)
 
-full_ev_data = pd.concat(dfs, ignore_index=True)
-
-full_ev_data.to_excel("data/raw/hand_ev_full.xlsx", index=False)
+    full_ev_data = pd.concat(dfs, ignore_index=True)
+    
+    full_ev_data.to_excel(os.path.join(raw_dir,'hand_ev_full.xlsx'), index=False)
+    
+    
+    

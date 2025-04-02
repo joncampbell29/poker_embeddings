@@ -4,6 +4,7 @@ from poker_utils.constants import HANDS_DICT
 from itertools import product
 import pandas as pd
 from tqdm import tqdm
+import os
 
 def extract_win_breakdown(soup_tr):
     hand_desc, val = soup_tr.find_all("td")
@@ -57,6 +58,14 @@ def parse_hand_hand_html(soup_html):
     }
     
 if __name__ == "__main__":
+    
+    data_dir = "./data"
+    raw_dir = os.path.join(data_dir, "raw")
+    
+    for directory in [data_dir, raw_dir]:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            
     res = []
     for hand1, hand2 in tqdm(product(HANDS_DICT.values(), HANDS_DICT.values())):
         if hand1[0] == hand1[1]:
@@ -76,5 +85,6 @@ if __name__ == "__main__":
             hand_hand_data = {'not_found_hand1': hand1,'not_found_hand2': hand2}
         res.append(hand_hand_data)
     equity_df = pd.json_normalize(res)
-    equity_df.to_csv("data/equity_data.csv", index=False)
+    
+    equity_df.to_csv(os.path.join(raw_dir, 'equity_data.csv'), index=False)
     

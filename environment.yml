@@ -1,0 +1,27 @@
+name: poker_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - ipykernel
+  - jupyter
+  - matplotlib
+  - networkx
+  - numpy
+  - pandas
+  - scikit-learn
+  - seaborn
+  - tqdm
+  - statsmodels
+  - lxml
+  - pip
+  - pip:
+    - torch
+    - torchvision
+    - torchaudio
+    - torch-geometric
+    - requests
+    - beautifulsoup4
+    - treys
+
