@@ -1,34 +1,15 @@
 # Analyzing Latent Representations in Texas Holdem
 
-## Data Sources
+## Data Collection
 
 This project uses poker hand data from the following sources:
 
 - [CardFight](https://cardfight.com/) - Provides Equity data
 - [FlopturnRiver](https://flopturnriver.com/poker-strategy/) - Provides hand EV data
 
-### Data Collection
+The data collection scripts can be found in `data_collection/`. Collected data is stored in the `data/raw` directory.
 
-The data collection scripts can be found in `data_collection/`
-
-```bash
-# Make sure your environment is activated
-conda activate poker_env
-
-# Run the data collection script
-python scripts/collect_data.py
-```
-
-### Data Structure
-
-Collected data is stored in the `data/` directory with the following structure:
-
-- `data/raw/` - Raw data scraped from sources
-- `data/processed/` - Cleaned and processed datasets ready for analysis
-- `data/features/` - Extracted features for model training
-
-Note: Due to size limitations, raw data files are not included in the repository. Running the data collection scripts will generate these files locally.
-
+Note: Running the data collection scripts will generate these files locally.
 
 
 ## Environment Setup
