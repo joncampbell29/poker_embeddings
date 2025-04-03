@@ -1,5 +1,6 @@
 name: poker_env
 channels:
+  - pytorch
   - conda-forge
   - defaults
 dependencies:
@@ -15,13 +16,11 @@ dependencies:
   - tqdm
   - statsmodels
   - lxml
+  - pytorch::pytorch=2.5.1
+  - pytorch::cpuonly
+  - requests
+  - beautifulsoup4
   - pip
   - pip:
-    - torch
-    - torchvision
-    - torchaudio
     - torch-geometric
-    - requests
-    - beautifulsoup4
     - treys
-
