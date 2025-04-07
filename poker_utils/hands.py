@@ -52,8 +52,24 @@ def card_distance(hand):
     else:
         return standard_sep
 
-def find_blocked_hands(hand: str):
-    ''' 
+def find_blocked_hands(hand: tuple):
+    '''
+    Returns list of hands if blocks
+    '''
+    card1, card2 = hand
+    blocked_hands = []
+    
+    for possible_hand in HANDS:
+        if (possible_hand == hand) or (possible_hand == (hand[1], hand[0])):
+            continue
+            
+        if card1 in possible_hand or card2 in possible_hand:
+            blocked_hands.append(possible_hand)
+    return blocked_hands 
+
+
+def find_blocked_hands_simple(hand: str):
+    '''
     Returns dictionary of hands if blocks and the number of combos it blocks
     '''
     if hand[-1] == "s":
@@ -62,11 +78,11 @@ def find_blocked_hands(hand: str):
     else:
         card1 = hand[0]+"c"
         card2 = hand[1]+"d"
-        
+    hand = (card1, card2)
     blocked_hands = []
     
     for possible_hand in HANDS:
-        if possible_hand == hand:
+        if (possible_hand == hand) or (possible_hand == (hand[1], hand[0])):
             continue
             
         if card1 in possible_hand or card2 in possible_hand:
@@ -75,6 +91,8 @@ def find_blocked_hands(hand: str):
     
     blocked_combos_dict = {i:j for i,j in zip(hands, counts)}
     return blocked_combos_dict
+
+
 
 def find_dominated_hands(hand: str):
     if hand[-1] == "s":
