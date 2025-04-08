@@ -10,5 +10,9 @@ requires-python = ">=3.8"
 dependencies = [
     "pyyaml",
     "numpy",
-    "treys"
+    "treys",
+    "torch==2.5.1",
+    "scikit-learn",
+    "matplotlib",
+    "seaborn"
 ]
