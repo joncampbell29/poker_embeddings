@@ -171,4 +171,5 @@ cython_debug/
 .pypirc
 
 data/
+.vscode
 data_collection/create_similarity_labels.py
