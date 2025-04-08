@@ -75,7 +75,7 @@ if __name__ == "__main__":
     hand_win_totals = hand_win_totals.reset_index().rename({"index":'hand'}, axis=1)
 
 
-    equity_data.to_csv(os.path.join(proc_dir, 'equity_totals.csv'), index=False)
+    hand_win_totals.to_csv(os.path.join(proc_dir, 'equity_totals.csv'), index=False)
 
 
 

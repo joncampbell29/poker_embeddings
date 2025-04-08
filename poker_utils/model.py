@@ -75,8 +75,8 @@ def analyze_embeddings(
     plt.grid(alpha=0.3)
     plt.tight_layout()
     plt.show()
-    
-    return top_bottom_df
+    print(top_bottom_df)
+    return similarity_df
 
 def get_feature_importance(model, input_tensor, feature_names, prediction_idx=None, target_idx=None):
     model.eval()
