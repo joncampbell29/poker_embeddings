@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import classification_report
-from sklearn.neural_network import MLPClassifier
+from sklearn.neural_network import MLPClassifier, MLPRegressor
 import warnings
 from sklearn.exceptions import ConvergenceWarning
 # from sklearn.decomposition import PCA
@@ -144,19 +144,38 @@ def get_feature_importance(model, input_tensor, feature_names, prediction_idx=No
     # plt.tight_layout()
     # plt.show()
 
-def prob_embeddings(embedding, base_data):
-    X = embedding.detach().cpu().numpy()
-    attributes = [
+def prob_embeddings(embedding, prob_data):
+    if isinstance(embedding, torch.Tensor):
+        embedding = embedding.detach().cpu().numpy()
+    attributes_cls = [
         'suited', 'connectedness', 'pair', 'high_card', 'low_card',
         'rank_diff', 'hand_type', 'ace', 'broadway', 'low_pair', 'medium_pair',
         'high_pair','suited_broadway','connector', 'one_gap', 'two_gap',
         'suited_connector', 'suited_one_gap', 'suited_two_gap'
     ]
-    results = []
+    attributes_reg = [
+        'tot_win_perc', 'high_card_win_perc',
+        'one_pair_win_perc', 'two_pair_win_perc', 'three_of_a_kind_win_perc',
+        'straight_win_perc', 'flush_win_perc', 'full_house_win_perc',
+        'four_of_a_kind_win_perc', 'straight_flush_win_perc',
+        'BB_play10', 'BB_play2', 'BB_play3', 'BB_play4', 'BB_play5', 'BB_play6',
+        'BB_play7', 'BB_play8', 'BB_play9', 'D_play10', 'D_play3', 'D_play4',
+        'D_play5', 'D_play6', 'D_play7', 'D_play8', 'D_play9', 'SB_play10',
+        'SB_play2', 'SB_play3', 'SB_play4', 'SB_play5', 'SB_play6', 'SB_play7',
+        'SB_play8', 'SB_play9', 'pos3_play10', 'pos3_play4', 'pos3_play5',
+        'pos3_play6', 'pos3_play7', 'pos3_play8', 'pos3_play9', 'pos4_play10',
+        'pos4_play5', 'pos4_play6', 'pos4_play7', 'pos4_play8', 'pos4_play9',
+        'pos5_play10', 'pos5_play6', 'pos5_play7', 'pos5_play8', 'pos5_play9',
+        'pos6_play10', 'pos6_play7', 'pos6_play8', 'pos6_play9', 'pos7_play10',
+        'pos7_play8', 'pos7_play9', 'pos8_play10', 'pos8_play9', 'pos9_play10'
+        ]
+    
+    reg_results = []
+    cls_results = []
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=ConvergenceWarning)
-        for attr in attributes:
-            y = base_data[attr].to_numpy()
+        for attr in attributes_cls:
+            y = prob_data[attr].to_numpy()
         
             classifier = MLPClassifier(
             hidden_layer_sizes=(32,),
@@ -164,14 +183,14 @@ def prob_embeddings(embedding, base_data):
             solver='adam',
             max_iter=1000,
             random_state=29
-            ).fit(X, y)
-            pred = classifier.predict(X)
+            ).fit(embedding, y)
+            pred = classifier.predict(embedding)
             acc = np.mean(pred == y)
             report = classification_report(y, pred, output_dict=True, zero_division=0)
 
             for label, metrics in report.items():
                 if label not in ['accuracy', 'macro avg', 'weighted avg']:
-                    results.append({
+                    cls_results.append({
                         'attribute': attr,
                         'class': label,
                         'accuracy': acc,
@@ -180,8 +199,22 @@ def prob_embeddings(embedding, base_data):
                         'f1_score': metrics['f1-score'],
                         'support_frac': metrics['support'] / len(y)
                     })
-
-    return pd.DataFrame(results)
+        for attr in attributes_reg:
+            y = prob_data[attr].to_numpy()
+            regressor = MLPRegressor(
+                hidden_layer_sizes=(32,),
+                activation='relu',
+                solver='adam',
+                max_iter=1000,
+                random_state=29
+                ).fit(embedding, y)
+            pred = regressor.predict(embedding)
+            rmse = np.sqrt(np.mean((pred - y)**2))
+            reg_results.append({
+                'attribute': attr,
+                'rmse': rmse
+            })
+    return pd.DataFrame(cls_results), pd.DataFrame(reg_results)
 
 
 
