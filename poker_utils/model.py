@@ -4,7 +4,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.decomposition import PCA
+from sklearn.metrics import classification_report
+from sklearn.neural_network import MLPClassifier
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+# from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from poker_utils.constants import HANDS_DICT
 import os
 UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -30,7 +35,17 @@ def create_similarity_top_bottom(similarity_df, hands_of_interest):
 
     return pd.DataFrame(records)
 
-
+def plot_train_loss(train_losses, val_losses, figsize=(5,5)):
+    plt.figure(figsize=figsize)
+    plt.plot(train_losses, label='Training Loss')
+    plt.plot(val_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Loss')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+    
 def analyze_embeddings(
     embeddings, 
     hands_of_interest=['AAo','KKo','QQo','AKs','AKo','JJo','TTo','A2s','72o','Q5s','76s','99o'],
@@ -51,27 +66,29 @@ def analyze_embeddings(
     top_bottom_df = create_similarity_top_bottom(similarity_df, hands_of_interest)
     
     embeddings_df = pd.DataFrame(embeddings, index=hands)
-    pca = PCA(n_components=2)
-    embeddings_2d = pca.fit_transform(embeddings)
-    embeddings_2d_df = pd.DataFrame(embeddings_2d, index=hands, columns=['PC1', 'PC2'])
+    tsne = TSNE(n_components=2, perplexity=30, random_state=29)
+    embeddings_2d = tsne.fit_transform(embeddings)
+    # pca = PCA(n_components=2)
+    # embeddings_2d = pca.fit_transform(embeddings)
+    embeddings_2d_df = pd.DataFrame(embeddings_2d, index=hands, columns=['C1', 'C2'])
 
-    pca_df = pd.concat([base_hand_data, embeddings_2d_df], axis=1).reset_index()
-    pca_df.rename({'index':'hand'}, axis=1, inplace=True)
+    tsne_df = pd.concat([base_hand_data, embeddings_2d_df], axis=1).reset_index()
+    tsne_df.rename({'index':'hand'}, axis=1, inplace=True)
     
     plt.figure(figsize=kwargs.get("figsize", (12, 10)))
-    sns.scatterplot(data=pca_df, 
-                    x='PC1', y='PC2', 
+    sns.scatterplot(data=tsne_df, 
+                    x='C1', y='C2', 
                     hue=hand_feature_to_color, 
                     alpha=kwargs.get('alpha', 0.7))
 
     for hand in hands_of_interest:
-        if hand in pca_df['hand'].values:
-            row = pca_df[pca_df['hand'] == hand].iloc[0]
-            plt.annotate(hand, (row['PC1'], row['PC2']), fontsize=12, ha='center')
+        if hand in tsne_df['hand'].values:
+            row = tsne_df[tsne_df['hand'] == hand].iloc[0]
+            plt.annotate(hand, (row['C1'], row['C2']), fontsize=12, ha='center')
 
-    plt.title('PCA of Hand Embeddings', fontsize=14)
-    plt.xlabel('PC1', fontsize=12)
-    plt.ylabel('PC2', fontsize=12)
+    plt.title('TSNE of Hand Embeddings', fontsize=14)
+    plt.xlabel('C1', fontsize=12)
+    plt.ylabel('C2', fontsize=12)
     plt.grid(alpha=0.3)
     plt.tight_layout()
     plt.show()
@@ -126,6 +143,45 @@ def get_feature_importance(model, input_tensor, feature_names, prediction_idx=No
     # plt.title('Importance Heatmap by Hand and Feature')
     # plt.tight_layout()
     # plt.show()
+
+def prob_embeddings(embedding, base_data):
+    X = embedding.detach().cpu().numpy()
+    attributes = [
+        'suited', 'connectedness', 'pair', 'high_card', 'low_card',
+        'rank_diff', 'hand_type', 'ace', 'broadway', 'low_pair', 'medium_pair',
+        'high_pair','suited_broadway','connector', 'one_gap', 'two_gap',
+        'suited_connector', 'suited_one_gap', 'suited_two_gap'
+    ]
+    results = []
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+        for attr in attributes:
+            y = base_data[attr].to_numpy()
+        
+            classifier = MLPClassifier(
+            hidden_layer_sizes=(32,),
+            activation='relu',
+            solver='adam',
+            max_iter=1000,
+            random_state=29
+            ).fit(X, y)
+            pred = classifier.predict(X)
+            acc = np.mean(pred == y)
+            report = classification_report(y, pred, output_dict=True, zero_division=0)
+
+            for label, metrics in report.items():
+                if label not in ['accuracy', 'macro avg', 'weighted avg']:
+                    results.append({
+                        'attribute': attr,
+                        'class': label,
+                        'accuracy': acc,
+                        'precision': metrics['precision'],
+                        'recall': metrics['recall'],
+                        'f1_score': metrics['f1-score'],
+                        'support_frac': metrics['support'] / len(y)
+                    })
+
+    return pd.DataFrame(results)
 
 
 

@@ -24,7 +24,18 @@ if __name__ == "__main__":
     equity_data['hand2.hand'] = equity_data['hand2.hand'].apply(
         lambda x: x if x.endswith(('o','s')) else x + 'o')
 
-
+    handhand_equity = equity_data[['hand1.hand','hand2.hand','hand1.equity','hand2.equity']].copy()
+    handhand_equity.rename({
+        'hand1.hand': 'hand1',
+        'hand2.hand': 'hand2',
+        'hand1.equity': 'hand1_equity',
+        'hand2.equity': 'hand2_equity'
+    }, axis=1, inplace=True)
+    handhand_equity = handhand_equity[handhand_equity.hand1 != handhand_equity.hand2].copy()
+    handhand_equity['hand1_equity'] = handhand_equity['hand1_equity'] / 100
+    handhand_equity['hand2_equity'] = handhand_equity['hand2_equity'] / 100
+    handhand_equity.to_csv(os.path.join(proc_dir, 'handhand_equity.csv'), index=False)
+    
     made_hands = [
         'high_card',
         'one_pair',
