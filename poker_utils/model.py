@@ -214,7 +214,7 @@ def prob_embeddings(embedding, prob_data):
                 'attribute': attr,
                 'rmse': rmse
             })
-    return pd.DataFrame(cls_results), pd.DataFrame(reg_results)
+    return pd.concat([pd.DataFrame(cls_results), pd.DataFrame(reg_results)])
 
 
 

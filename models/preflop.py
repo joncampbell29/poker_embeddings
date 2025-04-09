@@ -3,34 +3,35 @@ import torch
 import torch.nn.functional as F
 
 
-class PredictivePreFlopEncoder(nn.Module):
-    def __init__(self, input_size=22, embedding_dim=8):
+class PreFlopVAE(nn.Module):
+    def __init__(self, input_size=102, embedding_dim=16):
         super().__init__()
         
         self.encoder = nn.Sequential(
-            nn.Linear(input_size, 32),
-            nn.ReLU(),
-            nn.BatchNorm1d(32),
-            nn.Linear(32, 64),
-            nn.ReLU(),
-            nn.BatchNorm1d(64),
-            nn.Linear(64, 32),
-            nn.ReLU(),
-            nn.BatchNorm1d(32),
-            nn.Linear(32, embedding_dim)
+            nn.Linear(input_size, 64)
         )
+        
+        self.mean_fc = nn.Linear(64, embedding_dim)
+        self.logvar_fc = nn.Linear(64, embedding_dim)
         
         self.decoder = nn.Sequential(
-            nn.Linear(embedding_dim, 32),
-            nn.ReLU(),
-            nn.BatchNorm1d(32),
-            nn.Linear(32, 54)
+            nn.Linear(embedding_dim, 64),
+            nn.LeakyReLU(),
+            nn.Linear(64, input_size)
         )
+    def reparameterize(self, mean, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        z = mean + eps * std
+        return z
         
     def forward(self, x):
-        embedding = self.encoder(x)
-        equity_metrics = self.decoder(embedding)
-        return embedding, equity_metrics
+        h = self.encoder(x)
+        mean = self.mean_fc(h)
+        logvar = self.logvar_fc(h)
+        z = self.reparameterize(mean, logvar)
+        recon = self.decoder(z)
+        return recon, mean, logvar
 
 class PreFlopEncoderTriplet(nn.Module):
     def __init__(self, input_size=22, embedding_dim=8, dropout_rate=0.2):
