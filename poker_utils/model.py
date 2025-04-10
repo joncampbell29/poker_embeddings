@@ -6,6 +6,8 @@ import seaborn as sns
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.metrics import classification_report
 from sklearn.neural_network import MLPClassifier, MLPRegressor
+from scipy.spatial.distance import pdist, squareform
+from scipy.stats import spearmanr
 import warnings
 from sklearn.exceptions import ConvergenceWarning
 # from sklearn.decomposition import PCA
@@ -216,7 +218,16 @@ def prob_embeddings(embedding, prob_data):
             })
     return pd.concat([pd.DataFrame(cls_results), pd.DataFrame(reg_results)])
 
+def evaluate_hand_hand_equity(embeddings, equity_matrix):
+    if isinstance(embeddings, torch.Tensor):
+        embeddings = embeddings.detach().cpu().numpy()
+    emb_sim = embeddings @ embeddings.T
+    equity_sim = 1 - squareform(pdist(equity_matrix, metric='cosine'))
+    embedding_sims = emb_sim.flatten()
+    equity_sims = equity_sim.flatten()
 
+    corr, pval = spearmanr(embedding_sims, equity_sims)
+    return {'spear_corr': corr, "pval": pval}
 
 def save_model_and_embeddings(embeddings, embedding_filename, model=None, state_dict_filename=None):
     weight_dir = os.path.join(PROJ_ROOT, "model_weights")
