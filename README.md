@@ -6,7 +6,7 @@ This project uses poker hand data from the following sources:
 
 - [CardFight](https://cardfight.com/) - Provides Equity data
 - [FlopturnRiver](https://flopturnriver.com/poker-strategy/) - Provides hand EV data
-
+- https://archive.ics.uci.edu/dataset/158/poker+hand
 The data collection scripts can be found in `data_collection/`. Collected data is stored in the `data/raw` directory.
 
 Note: Running the data collection scripts will generate these files locally.

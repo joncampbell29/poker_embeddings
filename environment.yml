@@ -18,9 +18,10 @@ dependencies:
   - statsmodels
   - lxml
   - pytorch::pytorch=2.5.1
-  - pytorch::cpuonly
+  - pytorch::pytorch-cuda=11.8
   - requests
   - beautifulsoup4
+  - from ucimlrepo import fetch_ucirepo 
   - pip
   - pip:
     - torch-geometric
