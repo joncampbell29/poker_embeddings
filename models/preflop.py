@@ -3,6 +3,31 @@ import torch
 import torch.nn.functional as F
 
 
+
+class SimpleEncoder(nn.Module):
+    def __init__(self, input_size=271, embedding_dim=16):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(input_size, 64),
+            nn.LeakyReLU(),
+            nn.Linear(64,32),
+            nn.LeakyReLU(),
+            nn.Linear(32, embedding_dim)
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(embedding_dim, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 64),
+            nn.LeakyReLU(),
+            nn.Linear(64,input_size)
+        )
+    def forward(self, x):
+        x_enc = self.encoder(x)
+        x_dec = self.decoder(x_enc)
+        return x_enc, x_dec
+    
+    
+    
 class PreFlopVAE(nn.Module):
     def __init__(self, input_size=102, embedding_dim=16):
         super().__init__()
