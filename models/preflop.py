@@ -3,28 +3,25 @@ import torch
 import torch.nn.functional as F
 
 
-
-class SimpleEncoder(nn.Module):
-    def __init__(self, input_size=271, embedding_dim=16):
+class ContrastiveEncoder(nn.Module):
+    def __init__(self, input_dim=271, embedding_dim=32, proj_dim=32):
         super().__init__()
         self.encoder = nn.Sequential(
-            nn.Linear(input_size, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64,32),
-            nn.LeakyReLU(),
-            nn.Linear(32, embedding_dim)
+            nn.Linear(input_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, embedding_dim)
         )
-        self.decoder = nn.Sequential(
-            nn.Linear(embedding_dim, 32),
-            nn.LeakyReLU(),
-            nn.Linear(32, 64),
-            nn.LeakyReLU(),
-            nn.Linear(64,input_size)
+        self.projection_head = nn.Sequential(
+            nn.Linear(embedding_dim, proj_dim),
+            nn.ReLU(),
+            nn.Linear(proj_dim, proj_dim)
         )
+
     def forward(self, x):
-        x_enc = self.encoder(x)
-        x_dec = self.decoder(x_enc)
-        return x_enc, x_dec
+        embedding = self.encoder(x)
+        proj = self.projection_head(embedding)
+        proj = F.normalize(proj, p=2, dim=1)
+        return embedding, proj
     
     
     
