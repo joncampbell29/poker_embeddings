@@ -9,7 +9,8 @@ from poker_utils.hands import normalize_hand
 import random
 
 class UCIrvineDataset(Dataset):
-    def __init__(self, train=None):
+    def __init__(self, test_size=0.2, add_random_cards=True,train=None):
+        self.add_random_cards = add_random_cards
         self.suit_id_mapping = {'c':0,'d':1,'h':2,'s':3}
         uc_irvine_suit_mapping = {1:'h', 2:'s', 3:'d', 4:'c'}
         uc_irvine_rank_mapping = {
@@ -36,46 +37,27 @@ class UCIrvineDataset(Dataset):
         X['hands_norm'] = list(zip(X['card1'], X['card2']))
         X['hands_norm'] = X['hands_norm'].apply(normalize_hand)
         X['hands_norm_id'] = X['hands_norm'].map(hand_to_id)
-        
         self.deck = np.arange(52)
-       
         X.drop(['C1','S1','C2','S2','C3','S3','C4','S4','C5','S5'], axis=1, inplace=True)
         if train is not None:
             X_train, X_val, y_train, y_val = train_test_split(
-                X, y, test_size=0.2, random_state=29, stratify=y
+                X, y, test_size=test_size, random_state=29, stratify=y
             )
             if train:
                 self.X = X_train.reset_index(drop=True)
                 self.y = y_train.reset_index(drop=True)
-                used_cards = self.X[['card1_id', 'card2_id', 'card3_id', 'card4_id', 'card5_id']].to_numpy()
-                remaining_cards = []
-                for row in used_cards:
-                    mask = np.isin(self.deck, row, invert=True)
-                    remaining = self.deck[mask]
-                    remaining_cards.append(remaining)
-                self.remaining_cards = np.stack(remaining_cards)
-                
+                if self.add_random_cards:
+                    self.refresh_boards()
             else:
                 self.X = X_val.reset_index(drop=True)
                 self.y = y_val.reset_index(drop=True)
-                used_cards = self.X[['card1_id', 'card2_id', 'card3_id', 'card4_id', 'card5_id']].to_numpy()
-                remaining_cards = []
-                for row in used_cards:
-                    mask = np.isin(self.deck, row, invert=True)
-                    remaining = self.deck[mask]
-                    remaining_cards.append(remaining)
-                self.remaining_cards = np.stack(remaining_cards)
-                
+                if self.add_random_cards:
+                    self.refresh_boards()
         else:
             self.X = X
             self.y = y
-            used_cards = self.X[['card1_id', 'card2_id', 'card3_id', 'card4_id', 'card5_id']].to_numpy()
-            remaining_cards = []
-            for row in used_cards:
-                mask = np.isin(self.deck, row, invert=True)
-                remaining = self.deck[mask]
-                remaining_cards.append(remaining)
-            self.remaining_cards = np.stack(remaining_cards)
+            if self.add_random_cards:
+                self.refresh_boards()
             
     def __len__(self):
         return len(self.X)
@@ -86,15 +68,10 @@ class UCIrvineDataset(Dataset):
         suit1_id = self.suit_id_mapping[row['card1'][-1]]
         suit2_id = self.suit_id_mapping[row['card2'][-1]]
         hand_id = row['hands_norm_id']
-        
-        base_board = [row['card3_id'], row['card4_id'], row['card5_id']]
-        remaining = self.remaining_cards[index]
-        board_extension_size = random.randint(0, 2)
-        sampled = random.sample(list(remaining), board_extension_size)
-        full_board = base_board + sampled
-        random.shuffle(full_board)
-        while len(full_board) < 5:
-            full_board.append(-1)
+        if self.add_random_cards:
+            full_board = self.full_boards[index]
+        else:
+            full_board = row['card3_id'], row['card4_id'], row['card5_id']
         
         return (
             torch.tensor(hand_id, dtype=torch.long),
@@ -103,3 +80,25 @@ class UCIrvineDataset(Dataset):
             torch.tensor(full_board, dtype=torch.long),
             torch.tensor(y, dtype=torch.long)
         )
+    def refresh_boards(self):
+        full_boards = []
+        for i in range(len(self.X)):
+            row = self.X.iloc[i]
+            used = [row['card1_id'], row['card2_id'],
+                    row['card3_id'], row['card4_id'], row['card5_id']]
+            mask = np.isin(self.deck, used, invert=True)
+            remaining = self.deck[mask]
+
+            base_board = [row['card3_id'], row['card4_id'], row['card5_id']]
+            board_extension_size = random.randint(0, 2)
+            sampled = random.sample(list(remaining), board_extension_size)
+
+            full_board = base_board + sampled
+            random.shuffle(full_board)
+
+            while len(full_board) < 5:
+                full_board.append(-1)
+
+            full_boards.append(full_board)
+
+        self.full_boards = np.array(full_boards, dtype=np.int64)

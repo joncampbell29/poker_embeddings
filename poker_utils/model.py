@@ -37,10 +37,11 @@ def create_similarity_top_bottom(similarity_df, hands_of_interest):
 
     return pd.DataFrame(records)
 
-def plot_train_loss(train_losses, val_losses, figsize=(5,5)):
+def plot_train_loss(train_losses, val_losses=None, figsize=(5,5)):
     plt.figure(figsize=figsize)
     plt.plot(train_losses, label='Training Loss')
-    plt.plot(val_losses, label='Validation Loss')
+    if val_losses is not None:
+        plt.plot(val_losses, label='Validation Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.title('Training and Validation Loss')
