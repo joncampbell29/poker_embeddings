@@ -232,9 +232,10 @@ def evaluate_hand_hand_equity(embeddings, equity_matrix):
 
 def save_model_and_embeddings(embeddings, embedding_filename, model=None, state_dict_filename=None):
     weight_dir = os.path.join(PROJ_ROOT, "model_weights")
+    emb_dir = os.path.join(PROJ_ROOT, "embeddings")
     if isinstance(embeddings, np.ndarray):
         embeddings = torch.tensor(embeddings)
-    torch.save(embeddings, os.path.join(weight_dir, embedding_filename+".pt"))
+    torch.save(embeddings, os.path.join(emb_dir, embedding_filename+".pt"))
     if model is not None:
         torch.save(model.state_dict(), os.path.join(weight_dir, state_dict_filename+".pth"))
         

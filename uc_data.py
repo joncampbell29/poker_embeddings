@@ -9,7 +9,13 @@ from poker_utils.hands import normalize_hand
 import random
 
 class UCIrvineDataset(Dataset):
-    def __init__(self, test_size=0.2, add_random_cards=True,train=None):
+    def __init__(self, 
+                 X_path="data/uc_irvine/X.csv", 
+                 y_path="data/uc_irvine/y.csv", 
+                 test_size=0.2, 
+                 add_random_cards=True,
+                 train=None):
+        
         self.add_random_cards = add_random_cards
         self.suit_id_mapping = {'c':0,'d':1,'h':2,'s':3}
         uc_irvine_suit_mapping = {1:'h', 2:'s', 3:'d', 4:'c'}
@@ -21,9 +27,9 @@ class UCIrvineDataset(Dataset):
             0:'nothing', 1:'one_pair', 2:'two_pair', 3:'three_of_a_kind', 4:'straight', 
             5:'flush', 6:'full_house', 7:'four_of_a_kind', 8:'straight_flush', 9:'royal_flush'
             }
-        poker_hand = fetch_ucirepo(id=158) 
-        X = poker_hand.data.features.copy()
-        y = poker_hand.data.targets.copy()
+        
+        X = pd.read_csv(X_path)
+        y = pd.read_csv(y_path)
         suit_cols = [f'S{i}' for i in range(1, 6)]
         rank_cols = [f'C{i}' for i in range(1, 6)]
         X[suit_cols] = X[suit_cols].apply(lambda col: col.map(uc_irvine_suit_mapping))
