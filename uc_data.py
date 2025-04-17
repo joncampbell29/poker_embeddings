@@ -40,9 +40,9 @@ class UCIrvineDataset(Dataset):
             X[f'card{i}'] = X[f'C{i}'] + X[f'S{i}']
             X[f'card{i}_id'] = X[f'card{i}'].map(card_to_id)
             
-        X['hands_norm'] = list(zip(X['card1'], X['card2']))
-        X['hands_norm'] = X['hands_norm'].apply(normalize_hand)
-        X['hands_norm_id'] = X['hands_norm'].map(hand_to_id)
+        # X['hands_norm'] = list(zip(X['card1'], X['card2']))
+        # X['hands_norm'] = X['hands_norm'].apply(normalize_hand)
+        # X['hands_norm_id'] = X['hands_norm'].map(hand_to_id)
         self.deck = np.arange(52)
         X.drop(['C1','S1','C2','S2','C3','S3','C4','S4','C5','S5'], axis=1, inplace=True)
         if train is not None:
@@ -71,18 +71,17 @@ class UCIrvineDataset(Dataset):
     def __getitem__(self, index):
         y = self.y.iloc[index]['CLASS']
         row = self.X.iloc[index]
-        suit1_id = self.suit_id_mapping[row['card1'][-1]]
-        suit2_id = self.suit_id_mapping[row['card2'][-1]]
-        hand_id = row['hands_norm_id']
+        # suit1_id = self.suit_id_mapping[row['card1'][-1]]
+        # suit2_id = self.suit_id_mapping[row['card2'][-1]]
+        # hand_id = row['hands_norm_id']
+        hand = row['card1_id'], row['card2_id']
         if self.add_random_cards:
             full_board = self.full_boards[index]
         else:
             full_board = row['card3_id'], row['card4_id'], row['card5_id']
         
         return (
-            torch.tensor(hand_id, dtype=torch.long),
-            torch.tensor(suit1_id, dtype=torch.long),
-            torch.tensor(suit2_id, dtype=torch.long),
+            torch.tensor(hand, dtype=torch.long),
             torch.tensor(full_board, dtype=torch.long),
             torch.tensor(y, dtype=torch.long)
         )
