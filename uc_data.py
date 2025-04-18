@@ -31,16 +31,19 @@ class UCIrvineDataset(Dataset):
             if train:
                 self.X = X_train.reset_index(drop=True)
                 self.y = y_train.reset_index(drop=True)
+                self.full_boards = np.full((len(self.X), 5), -1, dtype=np.int64)
                 if self.add_random_cards:
                     self.refresh_boards()
             else:
                 self.X = X_val.reset_index(drop=True)
                 self.y = y_val.reset_index(drop=True)
+                self.full_boards = np.full((len(self.X), 5), -1, dtype=np.int64)
                 if self.add_random_cards:
                     self.refresh_boards()
         else:
             self.X = X
             self.y = y
+            self.full_boards = np.full((len(self.X), 5), -1, dtype=np.int64)
             if self.add_random_cards:
                 self.refresh_boards()
             
@@ -63,8 +66,7 @@ class UCIrvineDataset(Dataset):
             torch.tensor(y, dtype=torch.long)
         )
     def refresh_boards(self):
-        num_rows = len(self.X)
-        full_boards = np.full((num_rows, 5), -1, dtype=np.int64)
+        
         card_id_lookup = {Card.new(card): self.card_to_id[card] for card in self.card_to_id}
         deck_set = set(self.deck_treys.tolist())
 
@@ -95,7 +97,7 @@ class UCIrvineDataset(Dataset):
             while len(full_board) < 5:
                 full_board.append(-1)
             random.shuffle(full_board)
-            full_boards[i] = full_board
+            self.full_boards[i] = full_board
 
 class UCIrvineDatasetDynamic(Dataset):
     def __init__(self, X, y, add_random_cards=True):
