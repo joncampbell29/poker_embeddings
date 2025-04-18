@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from poker_utils.constants import HANDS_DICT, DECK_DICT
 from poker_utils.hands import normalize_hand
 import random
+from treys import Card, Evaluator
 
 class UCIrvineDataset(Dataset):
     def __init__(self, 
@@ -17,37 +18,15 @@ class UCIrvineDataset(Dataset):
                  train=None):
         
         self.add_random_cards = add_random_cards
-        self.suit_id_mapping = {'c':0,'d':1,'h':2,'s':3}
-        uc_irvine_suit_mapping = {1:'h', 2:'s', 3:'d', 4:'c'}
-        uc_irvine_rank_mapping = {
-            1:'A', 2:'2', 3:'3', 4:'4', 5:'5', 6:'6',
-            7:'7', 8:'8', 9:'9', 10:'T', 11:'J', 12:'Q', 13:'K'
-            }
-        uc_irvine_class_mapping = {
-            0:'nothing', 1:'one_pair', 2:'two_pair', 3:'three_of_a_kind', 4:'straight', 
-            5:'flush', 6:'full_house', 7:'four_of_a_kind', 8:'straight_flush', 9:'royal_flush'
-            }
-        
         X = pd.read_csv(X_path)
         y = pd.read_csv(y_path)
-        suit_cols = [f'S{i}' for i in range(1, 6)]
-        rank_cols = [f'C{i}' for i in range(1, 6)]
-        X[suit_cols] = X[suit_cols].apply(lambda col: col.map(uc_irvine_suit_mapping))
-        X[rank_cols] = X[rank_cols].apply(lambda col: col.map(uc_irvine_rank_mapping))
-        hand_to_id = {hand: idx for idx, hand in HANDS_DICT.items()}
-        card_to_id = {card:idx for idx,card in DECK_DICT.items()}
-        for i in range(1, 6):
-            X[f'card{i}'] = X[f'C{i}'] + X[f'S{i}']
-            X[f'card{i}_id'] = X[f'card{i}'].map(card_to_id)
-            
-        # X['hands_norm'] = list(zip(X['card1'], X['card2']))
-        # X['hands_norm'] = X['hands_norm'].apply(normalize_hand)
-        # X['hands_norm_id'] = X['hands_norm'].map(hand_to_id)
-        self.deck = np.arange(52)
-        X.drop(['C1','S1','C2','S2','C3','S3','C4','S4','C5','S5'], axis=1, inplace=True)
+        self.evaluator = Evaluator()
+        self.card_to_id = {card:idx for idx,card in DECK_DICT.items()}
+        deck = np.array(list(DECK_DICT.values()))
+        self.deck_treys = np.array([Card.new(i) for i in deck])
         if train is not None:
             X_train, X_val, y_train, y_val = train_test_split(
-                X, y, test_size=test_size, random_state=29, stratify=y
+                X, y, test_size=test_size, random_state=29, stratify=y['CLASS']
             )
             if train:
                 self.X = X_train.reset_index(drop=True)
@@ -71,9 +50,7 @@ class UCIrvineDataset(Dataset):
     def __getitem__(self, index):
         y = self.y.iloc[index]['CLASS']
         row = self.X.iloc[index]
-        # suit1_id = self.suit_id_mapping[row['card1'][-1]]
-        # suit2_id = self.suit_id_mapping[row['card2'][-1]]
-        # hand_id = row['hands_norm_id']
+
         hand = row['card1_id'], row['card2_id']
         if self.add_random_cards:
             full_board = self.full_boards[index]
@@ -86,24 +63,98 @@ class UCIrvineDataset(Dataset):
             torch.tensor(y, dtype=torch.long)
         )
     def refresh_boards(self):
-        full_boards = []
-        for i in range(len(self.X)):
-            row = self.X.iloc[i]
-            used = [row['card1_id'], row['card2_id'],
-                    row['card3_id'], row['card4_id'], row['card5_id']]
-            mask = np.isin(self.deck, used, invert=True)
-            remaining = self.deck[mask]
+        num_rows = len(self.X)
+        full_boards = np.full((num_rows, 5), -1, dtype=np.int64)
+        card_id_lookup = {Card.new(card): self.card_to_id[card] for card in self.card_to_id}
+        deck_set = set(self.deck_treys.tolist())
 
-            base_board = [row['card3_id'], row['card4_id'], row['card5_id']]
+        for row in self.X.itertuples(index=True):
+            i = row.Index
+            label_str = self.y.iloc[i]['CLASS_str']
+            used_treys = row.card1_treys, row.card2_treys, row.card3_treys, row.card4_treys, row.card5_treys
+            used_set = set(used_treys)
+            remaining_treys = list(deck_set - used_set)
+
+            base_board = [row.card3_id, row.card4_id, row.card5_id]
             board_extension_size = random.randint(0, 2)
-            sampled = random.sample(list(remaining), board_extension_size)
 
-            full_board = base_board + sampled
-            random.shuffle(full_board)
+            attempts = 0
+            while True:
+                attempts += 1
+                sampled = random.sample(remaining_treys, board_extension_size)
+                full_hand = list(used_treys) + sampled
+                hand_rank = self.evaluator.get_rank_class(self.evaluator.evaluate([], full_hand))
+                if self.evaluator.class_to_string(hand_rank) == label_str:
+                    break
+                if attempts > 10:
+                    break
 
+            sampled_ids = [card_id_lookup.get(c, -1) for c in sampled]
+            full_board = base_board + sampled_ids
+            
             while len(full_board) < 5:
                 full_board.append(-1)
+            random.shuffle(full_board)
+            full_boards[i] = full_board
 
-            full_boards.append(full_board)
+class UCIrvineDatasetDynamic(Dataset):
+    def __init__(self, X, y, add_random_cards=True):
+        self.X = X.reset_index(drop=True)
+        self.y = y.reset_index(drop=True)
+        self.add_random_cards = add_random_cards
 
-        self.full_boards = np.array(full_boards, dtype=np.int64)
+        self.evaluator = Evaluator()
+        self.card_to_id = {card: idx for idx, card in DECK_DICT.items()}
+        self.deck_treys = np.array([Card.new(c) for c in DECK_DICT.values()])
+        self.card_int_to_id = {Card.new(card): idx for idx, card in DECK_DICT.items()}
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        row = self.X.iloc[idx]
+        y_label = self.y.iloc[idx]['CLASS']
+        label_str = self.y.iloc[idx]['CLASS_str']
+
+        hand = (row['card1_id'], row['card2_id'])
+        used_treys = row['card1_treys'], row['card2_treys'], row['card3_treys'], row['card4_treys'], row['card5_treys']
+        base_board = [row['card3_id'], row['card4_id'], row['card5_id']]
+
+        if self.add_random_cards:
+            board = self.sample_random_board(used_treys, base_board, label_str)
+        else:
+            board = base_board + [-1, -1]
+
+        return (
+            torch.tensor(hand, dtype=torch.long),
+            torch.tensor(board, dtype=torch.long),
+            torch.tensor(y_label, dtype=torch.long)
+        )
+
+    def sample_random_board(self, used_treys, base_board, label_str):
+        used_set = set(used_treys)
+        remaining = [card for card in self.deck_treys if card not in used_set]
+        board_extension_size = random.randint(0, 2)
+        attempts = 0
+        evaluator = self.evaluator
+
+        while True:
+            attempts += 1
+            sampled = random.sample(remaining, board_extension_size)
+            full_hand = list(used_treys) + sampled
+            hand_rank = evaluator.get_rank_class(evaluator.evaluate([], full_hand))
+            if evaluator.class_to_string(hand_rank) == label_str:
+                break
+            if attempts > 10:
+                sampled = []
+                break
+            
+
+        sampled_ids = [self.card_int_to_id[card] for card in sampled]
+        full_board = base_board + sampled_ids
+        
+        while len(full_board) < 5:
+            full_board.append(-1)
+        
+        random.shuffle(full_board)
+        return full_board
