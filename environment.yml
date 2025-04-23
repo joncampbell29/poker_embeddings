@@ -17,7 +17,7 @@ dependencies:
   - tqdm
   - statsmodels
   - lxml
-  - pytorch::pytorch=2.5.1
+  - pytorch::pytorch=2.6.0
   - pytorch::pytorch-cuda=11.8
   - requests
   - beautifulsoup4

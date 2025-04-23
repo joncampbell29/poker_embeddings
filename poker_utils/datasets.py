@@ -1,11 +1,40 @@
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset
 from poker_utils.constants import HANDS_DICT, DECK_DICT
 import random
 from treys import Card, Evaluator
 from torch_geometric.data import Data
+
+class EquityDiffDataset:
+    def __init__(self, path_to_handhand_equity):
+        hand_to_id = {j:i for i,j in HANDS_DICT.items()}
+        self.data = pd.read_csv(path_to_handhand_equity)
+        self.data['hand1_id'] =self.data['hand1'].map(hand_to_id)
+        self.data['hand2_id'] =self.data['hand2'].map(hand_to_id)
+        
+    def __len__(self):
+        return self.data.shape[0]
+    
+    def __getitem__(self, idx):
+        row = self.data.iloc[idx]
+        if random.random() < 0.5:
+            hand1 = row['hand1_id']
+            hand2 = row['hand2_id']
+            equity_diff = row['hand1_equity'] - row['hand2_equity']
+        else:
+            hand1 = row['hand2_id']
+            hand2 = row['hand1_id']
+            equity_diff = row['hand2_equity'] - row['hand1_equity']
+
+        return (
+            torch.tensor(hand1, dtype=torch.long),
+            torch.tensor(hand2, dtype=torch.long),
+            torch.tensor(equity_diff, dtype=torch.float32)
+        )
+
 
 class UCIrvineDataset(Dataset):
     def __init__(self, X, y, add_random_cards=True, use_card_ids=True, graph=True, normalize_x=True):
@@ -65,7 +94,6 @@ class UCIrvineDataset(Dataset):
         data = Data(x=x, edge_index=edge_index, y=y['CLASS'])
         return data
     
-    
     def sample_random_board(self, used_treys, base_board, label_str):
         used_set = set(used_treys)
         remaining = [card for card in self.deck_treys if card not in used_set]
@@ -92,3 +120,4 @@ class UCIrvineDataset(Dataset):
     
     def __len__(self):
         return len(self.X)
+    
