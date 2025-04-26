@@ -10,8 +10,6 @@ if __name__ == "__main__":
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-
-
     equity_data = pd.read_csv(os.path.join(raw_dir,'equity_data.csv'))
     equity_data.drop_duplicates(inplace=True)
 
@@ -35,17 +33,17 @@ if __name__ == "__main__":
     handhand_equity['hand1_equity'] = handhand_equity['hand1_equity'] / 100
     handhand_equity['hand2_equity'] = handhand_equity['hand2_equity'] / 100
     handhand_equity.to_csv(os.path.join(proc_dir, 'handhand_equity.csv'), index=False)
-    
+
     made_hands = [
         'high_card',
         'one_pair',
         'two_pair',
         'three_of_a_kind',
-        'straight', 
+        'straight',
         'flush',
         'full_house',
         'four_of_a_kind',
-        'straight_flush', 
+        'straight_flush',
         ]
 
 
@@ -59,10 +57,10 @@ if __name__ == "__main__":
                 hand_totals_dict[hand]['tot_sims'] = 0
             for made_hand in made_hands:
                 hand_totals_dict[hand][made_hand+"_wins"] += row[f"{h}.breakdown.{made_hand}"]
-            hand_totals_dict[hand]['tot_wins'] += row[f'{h}.breakdown.total'] 
-            hand_totals_dict[hand]['tot_sims'] += row['hand1.breakdown.total'] + row['hand2.breakdown.total'] 
-        
-        
+            hand_totals_dict[hand]['tot_wins'] += row[f'{h}.breakdown.total']
+            hand_totals_dict[hand]['tot_sims'] += row['hand1.breakdown.total'] + row['hand2.breakdown.total']
+
+
     hand_win_totals = pd.DataFrame.from_dict(hand_totals_dict, orient='index')
 
     hand_win_totals['tot_win_perc'] = hand_win_totals['tot_wins'] / hand_win_totals['tot_sims']

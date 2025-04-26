@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset
-from poker_utils.constants import HANDS_DICT, DECK_DICT
+from .constants import HANDS_DICT, DECK_DICT
 import random
 from treys import Card, Evaluator
 from torch_geometric.data import Data
@@ -14,10 +14,10 @@ class EquityDiffDataset:
         self.data = pd.read_csv(path_to_handhand_equity)
         self.data['hand1_id'] =self.data['hand1'].map(hand_to_id)
         self.data['hand2_id'] =self.data['hand2'].map(hand_to_id)
-        
+
     def __len__(self):
         return self.data.shape[0]
-    
+
     def __getitem__(self, idx):
         row = self.data.iloc[idx]
         if random.random() < 0.5:
@@ -48,7 +48,7 @@ class UCIrvineDataset(Dataset):
         self.card_to_id = {card: idx for idx, card in DECK_DICT.items()}
         self.deck_treys = np.array([Card.new(c) for c in DECK_DICT.values()])
         self.card_int_to_id = {Card.new(card): idx for idx, card in DECK_DICT.items()}
-        
+
     def __getitem__(self, idx):
         row = self.X.iloc[idx]
         y = self.y.iloc[idx]
@@ -56,7 +56,7 @@ class UCIrvineDataset(Dataset):
         if self.add_random_cards:
             card_treys = [i.item() for i in row.filter(regex='treys')]
             cards_id = self.sample_random_board(card_treys, cards_id, y['CLASS_str'])
-        
+
         if not self.graph:
             while len(cards_id) < 7:
                 cards_id.append(-1)
@@ -65,7 +65,7 @@ class UCIrvineDataset(Dataset):
                 torch.tensor(y['CLASS'], dtype=torch.long)
             )
         cards_id = torch.tensor(cards_id)
-        
+
         if self.use_card_ids:
             x = cards_id.unsqueeze(1)
         else:
@@ -75,7 +75,7 @@ class UCIrvineDataset(Dataset):
                 rank = rank / 12.0
                 suit = suit / 3.0
             x = torch.stack([rank, suit], dim=1)
-            
+
         edges = []
         for i in range(len(cards_id)):
             for j in range(i + 1, len(cards_id)):
@@ -90,10 +90,10 @@ class UCIrvineDataset(Dataset):
             edge_index = torch.empty((2, 0), dtype=torch.long)
         else:
             edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
-            
+
         data = Data(x=x, edge_index=edge_index, y=y['CLASS'])
         return data
-    
+
     def sample_random_board(self, used_treys, base_board, label_str):
         used_set = set(used_treys)
         remaining = [card for card in self.deck_treys if card not in used_set]
@@ -114,10 +114,9 @@ class UCIrvineDataset(Dataset):
 
         sampled_ids = [self.card_int_to_id[card] for card in sampled]
         full_board = base_board + sampled_ids
-        
+
         random.shuffle(full_board)
         return full_board
-    
+
     def __len__(self):
         return len(self.X)
-    

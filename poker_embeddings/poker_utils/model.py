@@ -12,7 +12,7 @@ import warnings
 from sklearn.exceptions import ConvergenceWarning
 # from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from poker_utils.constants import HANDS_DICT
+from .constants import HANDS_DICT
 import os
 
 
@@ -50,26 +50,26 @@ def plot_train_loss(train_losses, val_losses=None, figsize=(5,5)):
     plt.legend()
     plt.grid(True)
     plt.show()
-    
+
 def analyze_embeddings(
-    embeddings, 
+    embeddings,
     hands_of_interest=['AAo','KKo','QQo','AKs','AKo','JJo','TTo','A2s','72o','Q5s','76s','99o'],
     hand_feature_to_color='hand_type',
     **kwargs
     ):
-    
+
     base_hand_data = pd.read_csv(os.path.join(PROJ_ROOT, "data/raw/base_hand_data.csv")).set_index("hand")
-    
+
     hands = list(HANDS_DICT.values())
     if isinstance(embeddings, torch.Tensor):
         embeddings = embeddings.detach().cpu().numpy()
-    
+
     if embeddings.shape[0] != 169:
         raise ValueError(f"Embeddings of shape ({embeddings.shape[0]},{embeddings.shape[1]})")
-    
+
     similarity_df = pd.DataFrame(cosine_similarity(embeddings), index=hands, columns=hands)
     top_bottom_df = create_similarity_top_bottom(similarity_df, hands_of_interest)
-    
+
     embeddings_df = pd.DataFrame(embeddings, index=hands)
     tsne = TSNE(n_components=2, perplexity=30, random_state=29)
     embeddings_2d = tsne.fit_transform(embeddings)
@@ -79,11 +79,11 @@ def analyze_embeddings(
 
     tsne_df = pd.concat([base_hand_data, embeddings_2d_df], axis=1).reset_index()
     tsne_df.rename({'index':'hand'}, axis=1, inplace=True)
-    
+
     plt.figure(figsize=kwargs.get("figsize", (12, 10)))
-    sns.scatterplot(data=tsne_df, 
-                    x='C1', y='C2', 
-                    hue=hand_feature_to_color, 
+    sns.scatterplot(data=tsne_df,
+                    x='C1', y='C2',
+                    hue=hand_feature_to_color,
                     alpha=kwargs.get('alpha', 0.7))
 
     for hand in hands_of_interest:
@@ -135,12 +135,12 @@ def get_feature_importance(model, input_tensor, feature_names, prediction_idx=No
     all_importances = torch.stack(all_importances)  # [num_hands, num_targets, num_features]
     return all_importances
     # mean_importance_per_hand = pd.DataFrame(
-    #     all_importances.mean(dim=1).numpy(), 
-    #     index=list(HANDS_DICT.values()), 
+    #     all_importances.mean(dim=1).numpy(),
+    #     index=list(HANDS_DICT.values()),
     #     columns=feature_names)
     # plt.figure(figsize=(20, 12))
 
-    # ax = sns.heatmap(mean_importance_per_hand, 
+    # ax = sns.heatmap(mean_importance_per_hand,
     #                 cmap='YlOrRd',
     #                 robust=True,
     #                 cbar_kws={'label': 'importance'})
@@ -174,14 +174,14 @@ def prob_embeddings(embedding, prob_data):
         'pos6_play10', 'pos6_play7', 'pos6_play8', 'pos6_play9', 'pos7_play10',
         'pos7_play8', 'pos7_play9', 'pos8_play10', 'pos8_play9', 'pos9_play10'
         ]
-    
+
     reg_results = []
     cls_results = []
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=ConvergenceWarning)
         for attr in attributes_cls:
             y = prob_data[attr].to_numpy()
-        
+
             classifier = MLPClassifier(
             hidden_layer_sizes=(32,),
             activation='relu',
@@ -240,5 +240,4 @@ def save_model_and_embeddings(embeddings, embedding_filename, model=None, state_
     torch.save(embeddings, os.path.join(emb_dir, embedding_filename+".pt"))
     if model is not None:
         torch.save(model.state_dict(), os.path.join(weight_dir, state_dict_filename+".pth"))
-        
-    
+
