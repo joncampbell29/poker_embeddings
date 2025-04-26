@@ -85,6 +85,7 @@ class UCIrvineDataset(Dataset):
 
         self.card_ids = self.X.filter(regex='id').to_numpy()
         self.card_treys = self.X.filter(regex='treys').to_numpy()
+        self.y_CLASS = torch.tensor(self.y['CLASS'].to_numpy(), dtype=torch.long)
 
     def __getitem__(self, idx):
         y = self.y.iloc[idx]
@@ -97,7 +98,7 @@ class UCIrvineDataset(Dataset):
             cards_id = np.pad(cards_id, (0, 7 - len(cards_id)), constant_values=-1)
             return (
                 torch.tensor(cards_id, dtype=torch.long),
-                torch.tensor(y['CLASS'], dtype=torch.long)
+                self.y_CLASS[idx]
             )
         cards_id = torch.tensor(cards_id, dtype=torch.long)
 
@@ -110,7 +111,7 @@ class UCIrvineDataset(Dataset):
                 rank = rank / 12.0
                 suit = suit / 3.0
             x = torch.stack([rank, suit], dim=1)
-        data = self.create_graph(cards_id, x, y['CLASS'])
+        data = self.create_graph(cards_id, x, self.y_CLASS[idx])
 
         return data
 
