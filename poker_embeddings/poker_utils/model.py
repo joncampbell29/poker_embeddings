@@ -14,6 +14,9 @@ from sklearn.exceptions import ConvergenceWarning
 from sklearn.manifold import TSNE
 from .constants import HANDS_DICT, PROJ_ROOT
 import os
+import timeit
+from torch.utils.data import DataLoader
+from torch_geometric import loader
 
 
 
@@ -236,3 +239,39 @@ def save_model_and_embeddings(embeddings, embedding_filename, model=None, state_
     if model is not None:
         torch.save(model.state_dict(), os.path.join(weight_dir, state_dict_filename+".pth"))
 
+
+def benchmark_dataloader(dataset, batch_sizes=[64, 128, 256, 512, 1024], num_workers_list=[0, 1, 2, 4, 8], num_runs=10, graph=False):
+    print(f"Dataset size: {len(dataset)} samples")
+
+    best_time = float('inf')
+    for batch_size in batch_sizes:
+        for num_workers in num_workers_list:
+            if graph:
+                dloader = loader.DataLoader(
+                    dataset,
+                    batch_size=batch_size,
+                    shuffle=True,
+                    num_workers=num_workers,
+                    pin_memory=True
+                )
+            else:
+                dloader = DataLoader(
+                    dataset,
+                    batch_size=batch_size,
+                    shuffle=True,
+                    num_workers=num_workers,
+                    pin_memory=True
+                )
+
+            def load_one_epoch():
+                for batch in dloader:
+                    pass
+
+            total_time = timeit.timeit(load_one_epoch, number=num_runs)
+            avg_time = total_time / num_runs
+            print(f"Batch size: {batch_size}, num_workers: {num_workers}, time: {avg_time:.3f} seconds")
+            if avg_time < best_time:
+                best_time = avg_time
+                best_params = (batch_size, num_workers)
+
+    print(f"Best params: batch_size={best_params[0]}, num_workers={best_params[1]}, time {best_time:.3f}")

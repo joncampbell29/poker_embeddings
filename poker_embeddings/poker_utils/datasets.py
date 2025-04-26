@@ -83,22 +83,23 @@ class UCIrvineDataset(Dataset):
         self.deck_treys = np.array([Card.new(c) for c in DECK_DICT.values()])
         self.card_int_to_id = {Card.new(card): idx for idx, card in DECK_DICT.items()}
 
+        self.card_ids = self.X.filter(regex='id').to_numpy()
+        self.card_treys = self.X.filter(regex='treys').to_numpy()
+
     def __getitem__(self, idx):
-        row = self.X.iloc[idx]
         y = self.y.iloc[idx]
-        cards_id = [i.item() for i in row.filter(regex='id')]
+        cards_id = self.card_ids[idx]
         if self.add_random_cards:
-            card_treys = [i.item() for i in row.filter(regex='treys')]
+            card_treys = self.card_treys[idx]
             cards_id = self.sample_random_board(card_treys, cards_id, y['CLASS_str'])
 
         if not self.graph:
-            while len(cards_id) < 7:
-                cards_id.append(-1)
+            cards_id = np.pad(cards_id, (0, 7 - len(cards_id)), constant_values=-1)
             return (
                 torch.tensor(cards_id, dtype=torch.long),
                 torch.tensor(y['CLASS'], dtype=torch.long)
             )
-        cards_id = torch.tensor(cards_id)
+        cards_id = torch.tensor(cards_id, dtype=torch.long)
 
         if self.use_card_ids:
             x = cards_id.unsqueeze(1)
@@ -109,48 +110,54 @@ class UCIrvineDataset(Dataset):
                 rank = rank / 12.0
                 suit = suit / 3.0
             x = torch.stack([rank, suit], dim=1)
+        data = self.create_graph(cards_id, x, y['CLASS'])
 
-        edges = []
-        for i in range(len(cards_id)):
-            for j in range(i + 1, len(cards_id)):
-                id_i, id_j = cards_id[i].item(), cards_id[j].item()
-                rank_i, rank_j = id_i // 4, id_j // 4
-                suit_i, suit_j = id_i % 4, id_j % 4
-
-                if suit_i == suit_j or abs(rank_i - rank_j) <= 1 or abs(rank_i - rank_j) == 12:
-                    edges += [(i, j), (j, i)]
-
-        if not edges:
-            edge_index = torch.empty((2, 0), dtype=torch.long)
-        else:
-            edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
-
-        data = Data(x=x, edge_index=edge_index, y=y['CLASS'])
         return data
 
     def sample_random_board(self, used_treys, base_board, label_str):
-        used_set = set(used_treys)
-        remaining = [card for card in self.deck_treys if card not in used_set]
+        used_list = list(used_treys)
+        remaining = np.setdiff1d(self.deck_treys, list(used_list), assume_unique=True).tolist()
         board_extension_size = random.randint(0, 2)
-        attempts = 0
+
         evaluator = self.evaluator
+        if board_extension_size > 0:
+            for attempt in range(10):
+                sampled = random.sample(remaining, board_extension_size)
+                full_hand = used_list + sampled
+                hand_rank = evaluator.get_rank_class(evaluator.evaluate([], full_hand))
+                if evaluator.class_to_string(hand_rank) == label_str:
+                    sampled_ids = np.array([self.card_int_to_id[card] for card in sampled])
+                    full_board = np.concatenate((base_board, sampled_ids))
+                    return full_board
+            else:
+                return base_board
+        else:
+            return base_board
 
-        while True:
-            attempts += 1
-            sampled = random.sample(remaining, board_extension_size)
-            full_hand = list(used_treys) + sampled
-            hand_rank = evaluator.get_rank_class(evaluator.evaluate([], full_hand))
-            if evaluator.class_to_string(hand_rank) == label_str:
-                break
-            if attempts > 10:
-                sampled = []
-                break
+    def create_graph(self, cards_id, x, y):
+        ranks = cards_id // 4
+        suits = cards_id % 4
+        num_cards = cards_id.size(0)
+        idx_i = cards_id.unsqueeze(1).expand(num_cards, num_cards)
+        idx_j = cards_id.unsqueeze(0).expand(num_cards, num_cards)
 
-        sampled_ids = [self.card_int_to_id[card] for card in sampled]
-        full_board = base_board + sampled_ids
+        ranks_i = ranks.unsqueeze(1).expand(num_cards, num_cards)
+        ranks_j = ranks.unsqueeze(0).expand(num_cards, num_cards)
 
-        random.shuffle(full_board)
-        return full_board
+        suits_i = suits.unsqueeze(1).expand(num_cards, num_cards)
+        suits_j = suits.unsqueeze(0).expand(num_cards, num_cards)
+
+        suit_match = suits_i == suits_j
+        rank_close = (torch.abs(ranks_i - ranks_j) <= 1) | (torch.abs(ranks_i - ranks_j) == 12)
+
+        not_self = idx_i != idx_j
+
+        edge_mask = (suit_match | rank_close) & not_self
+
+        edge_index = edge_mask.nonzero(as_tuple=False).t().contiguous()
+
+        data = Data(x=x, edge_index=edge_index, y=y)
+        return data
 
     def __len__(self):
         return len(self.X)
