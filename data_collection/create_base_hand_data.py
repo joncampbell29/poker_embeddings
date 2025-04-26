@@ -1,6 +1,6 @@
 import pandas as pd
-from poker_utils.constants import HANDS_DICT
-from poker_utils.hands import card_distance
+from poker_embeddings.poker_utils.constants import HANDS_DICT
+from poker_embeddings.poker_utils.hands import card_distance
 import os
 
 data = []
@@ -17,7 +17,7 @@ for i, hand in HANDS_DICT.items():
         hand_type = 'suited'
     elif suited == 0:
         hand_type = 'offsuit'
-        
+
     ace = 1 if 'A' in hand else 0
     broadway = (hand[0] in {'A', 'K', 'Q', 'J', 'T'}) + (hand[1] in {'A', 'K', 'Q', 'J', 'T'})
     hand_info = {
@@ -34,7 +34,7 @@ for i, hand in HANDS_DICT.items():
         'broadway': broadway
     }
     data.append(hand_info)
-    
+
 data = pd.DataFrame(data)
 
 data['low_pair'] = ((data['pair'] == 1) & (data['high_card'] <= 4)).astype(int)
@@ -62,9 +62,9 @@ data['suited_connected_score'] = data['connectedness_score'] * data['suited']
 if __name__ == '__main__':
     data_dir = "./data"
     raw_dir = os.path.join(data_dir, "raw")
-    
+
     for directory in [data_dir, raw_dir]:
         if not os.path.exists(directory):
             os.makedirs(directory)
-            
+
     data.to_csv(os.path.join(raw_dir, 'base_hand_data.csv'), index=False)

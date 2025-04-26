@@ -1,6 +1,6 @@
 from treys import Card, Evaluator
-from ucimlrepo import fetch_ucirepo 
-from poker_utils.constants import HANDS_DICT, DECK_DICT
+from ucimlrepo import fetch_ucirepo
+from poker_embeddings.poker_utils.constants import HANDS_DICT, DECK_DICT
 import os
 import pandas as pd
 import numpy as np
@@ -13,7 +13,7 @@ uc_irvine_rank_mapping = {
     7:'7', 8:'8', 9:'9', 10:'T', 11:'J', 12:'Q', 13:'K'
     }
 uc_irvine_class_mapping = {
-    0:'High Card', 1:'Pair', 2:'Two Pair', 3:'Three of a Kind', 4:'Straight', 
+    0:'High Card', 1:'Pair', 2:'Two Pair', 3:'Three of a Kind', 4:'Straight',
     5:'Flush', 6:'Full House', 7:'Four of a Kind', 8:'Straight Flush', 9:'Royal Flush'
     }
 
@@ -21,17 +21,17 @@ def evaluate_hand(row):
     return evaluator.evaluate([], row.filter(regex='treys').tolist())
 
 if __name__ == '__main__':
-    
+
     data_dir = "./data"
     uc_dir = os.path.join(data_dir, "uc_irvine")
-    
+
     for directory in [data_dir, uc_dir]:
         if not os.path.exists(directory):
             os.makedirs(directory)
-            
+
     evaluator = Evaluator()
-    poker_hand = fetch_ucirepo(id=158) 
-  
+    poker_hand = fetch_ucirepo(id=158)
+
     X = poker_hand.data.features.copy()
     y = poker_hand.data.targets.copy()
 

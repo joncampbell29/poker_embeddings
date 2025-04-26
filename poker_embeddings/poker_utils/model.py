@@ -12,12 +12,9 @@ import warnings
 from sklearn.exceptions import ConvergenceWarning
 # from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
-from .constants import HANDS_DICT
+from .constants import HANDS_DICT, PROJ_ROOT
 import os
 
-
-UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJ_ROOT = os.path.abspath(os.path.join(UTILS_DIR, ".."))
 
 
 def create_similarity_top_bottom(similarity_df, hands_of_interest):
@@ -73,8 +70,6 @@ def analyze_embeddings(
     embeddings_df = pd.DataFrame(embeddings, index=hands)
     tsne = TSNE(n_components=2, perplexity=30, random_state=29)
     embeddings_2d = tsne.fit_transform(embeddings)
-    # pca = PCA(n_components=2)
-    # embeddings_2d = pca.fit_transform(embeddings)
     embeddings_2d_df = pd.DataFrame(embeddings_2d, index=hands, columns=['C1', 'C2'])
 
     tsne_df = pd.concat([base_hand_data, embeddings_2d_df], axis=1).reset_index()

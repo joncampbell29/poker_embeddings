@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from poker_utils.hands import find_blocked_hands, normalize_hand
-from poker_utils.constants import HANDS_DICT
+from poker_embeddings.poker_utils.hands import find_blocked_hands, normalize_hand
+from poker_embeddings.poker_utils.constants import HANDS_DICT
 import os
 
 data = []
@@ -15,7 +15,7 @@ for i, hand in HANDS_DICT.items():
     blocked = find_blocked_hands((card1,card2))
     hands, counts = np.unique(np.array([normalize_hand(i) for i in blocked]), return_counts=True)
     blocked_combos_dict = {i.item():j.item() for i,j in zip(hands, counts)}
-    
+
     premium_block = {
         'hand': hand,
         'block_aa': blocked_combos_dict.get('AAo', 0),
@@ -28,10 +28,10 @@ for i, hand in HANDS_DICT.items():
 data = pd.DataFrame(data)
 
 data['prem_blocker_score'] = (
-    data['block_aa'] * 5.0 + 
-    data['block_kk'] * 4.0 + 
-    data['block_qq'] * 3.0 + 
-    data['block_ak'] * 3.5 + 
+    data['block_aa'] * 5.0 +
+    data['block_kk'] * 4.0 +
+    data['block_qq'] * 3.0 +
+    data['block_ak'] * 3.5 +
     data['block_aq'] * 2.0
 )
 
@@ -42,9 +42,9 @@ data['block_kk_score'] = (data['block_kk'] - data['block_kk'].min()) / (data['bl
 if __name__ == '__main__':
     data_dir = "./data"
     raw_dir = os.path.join(data_dir, "raw")
-    
+
     for directory in [data_dir, raw_dir]:
         if not os.path.exists(directory):
             os.makedirs(directory)
-            
+
     data.to_csv(os.path.join(raw_dir, 'preflop_block_data.csv'), index=False)
