@@ -4,9 +4,43 @@ from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset
 from .constants import HANDS_DICT, DECK_DICT
+from .hands import card_distance, normalize_hand
 import random
 from treys import Card, Evaluator
 from torch_geometric.data import Data
+
+class CardDataset(Dataset):
+    def __init__(self, normalize_dist_matrix=True):
+        card_to_id = {j:i for i,j in DECK_DICT.items()}
+        self.data = pd.DataFrame.from_dict(DECK_DICT, orient='index', columns=['card']).reset_index()
+        self.data.rename({"index":'card_id'},axis=1, inplace=True)
+        self.data['card_rank'] = self.data['card_id'] // 4
+        self.data['card_suit'] = self.data['card_id'] % 4
+
+        self.dist_matrix = np.zeros((52,52), dtype=int)
+        for i in range(52):
+            for j in range(52):
+                card1 = self.data.iloc[i]['card']
+                card2 = self.data.iloc[j]['card']
+                self.dist_matrix[i,j] = card_distance(normalize_hand((card1,card2)))
+        if normalize_dist_matrix:
+            self.dist_matrix = self.dist_matrix / self.dist_matrix.max()
+        self.dist_matrix = torch.tensor(self.dist_matrix, dtype=torch.float32)
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        row = self.data.iloc[idx]
+        card_id = row['card_id']
+        suit_id = row['card_suit']
+        rank_id = row['card_rank']
+        dist_vec = self.dist_matrix[idx]
+        return {
+            'card': torch.tensor(card_id, dtype=torch.long),
+            'rank': torch.tensor(rank_id, dtype=torch.long),
+            'suit': torch.tensor(suit_id, dtype=torch.long),
+            'dist_vec': dist_vec
+        }
 
 class EquityDiffDataset:
     def __init__(self, path_to_handhand_equity):
