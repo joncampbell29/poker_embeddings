@@ -1,4 +1,7 @@
 import torch.nn as nn
+import torch_geometric as tg
+from torch_geometric.nn import GINEConv
+import torch.nn.functional as F
 import torch
 
 
@@ -32,3 +35,34 @@ class CardEncoder(nn.Module):
         suit_pred = self.suit_head(card_emb)
         dist_pred = self.dist_head(card_emb)
         return rank_pred, suit_pred, dist_pred
+
+class CardGNN(nn.Module):
+    def __init__(self, card_emb_dim=16, hidden_dim=16, out_dim=16, edge_attr_dim=2):
+        super().__init__()
+        self.card_embedder = nn.Embedding(53, card_emb_dim, padding_idx=52)
+
+        self.node_mlp = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim)
+        )
+        self.card_emb_projector = nn.Linear(card_emb_dim, hidden_dim)
+        self.gine1 = GINEConv(nn=self.node_mlp, edge_dim=edge_attr_dim)
+        self.gine2 = GINEConv(nn=self.node_mlp, edge_dim=edge_attr_dim)
+        self.final = nn.Linear(hidden_dim, out_dim)
+        self.output_layer = nn.Linear(out_dim, 10)
+    def forward(self, data):
+        card_ids = data.x
+        edge_index = data.edge_index
+        edge_attr = data.edge_attr
+
+        x = self.card_embedder(card_ids)
+        x = self.card_emb_projector(x)
+
+        x = self.gine1(x, edge_index, edge_attr)
+        x = F.relu(x)
+        x = self.gine2(x, edge_index, edge_attr)
+
+        x = self.final(x)
+        graphs_pooled = tg.utils.scatter(x, data.batch, dim=0, reduce='mean')
+        return self.output_layer(graphs_pooled)
