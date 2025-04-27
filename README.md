@@ -34,6 +34,13 @@ Uses Conda for environment management and a Python package defined in `pyproject
    ```bash
    pip install -e .
    ```
-   
+
    This installs the package in development mode, allowing changes to the source code to take effect without reinstallation.
+
+
+1. poetry install
+2. poetry run pip install https://download.pytorch.org/whl/cu126/torch-2.6.0%2Bcu126-cp312-cp312-manylinux_2_28_x86_64.whl
+3. poetry run pip install https://download.pytorch.org/whl/cu126/torchaudio-2.6.0%2Bcu126-cp312-cp312-linux_x86_64.whl
+4. poetry run pip install https://download.pytorch.org/whl/cu126/torchvision-0.21.0%2Bcu126-cp312-cp312-linux_x86_64.whl
+
 

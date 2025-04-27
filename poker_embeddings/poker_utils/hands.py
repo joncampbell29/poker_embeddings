@@ -1,4 +1,4 @@
-from .constants import DECK_DICT, HANDS
+from .constants import DECK_DICT, HANDS, RANKS_DICT
 from itertools import combinations, product
 import numpy as np
 
@@ -33,24 +33,30 @@ def get_possible_hands(hand: str):
             )
         return list(filter(filter_func, combos))
 
-def card_distance(hand):
-    rank_values = {
-        '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
-        'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
-    }
-    rank1, rank2 = hand[0], hand[1]
-    value1 = rank_values[rank1]
-    value2 = rank_values[rank2]
-    standard_sep = abs(value1 - value2)
-    if rank1 == 'A' or rank2 == 'A':
-        if rank1 == 'A':
-            alt_sep = abs(1 - value2)
-        else:
-            alt_sep = abs(value1 - 1)
 
-        return min(standard_sep, alt_sep)
+_rank_values = {j:i for i,j in RANKS_DICT.items()}
+def card_distance(hand):
+    if hand[0] == hand[1]: return 0
+    def calc_dist(val1,val2):
+        standard_sep = abs(val1 - val2)
+        if 12 not in (val1, val2):
+            return standard_sep
+        if val1 == 12:
+            alt_sep = abs(val2 + 1)
+            return min(standard_sep, alt_sep)
+        elif val2 == 12:
+            alt_sep = abs(val1 + 1)
+            return min(standard_sep, alt_sep)
+
+    if isinstance(hand, str):
+        rank1, rank2 = hand
+        value1 = _rank_values[rank1]
+        value2 = _rank_values[rank2]
+        return calc_dist(value1,value2)
     else:
-        return standard_sep
+        value1, value2 = hand
+        return calc_dist(value1,value2)
+
 
 def find_blocked_hands(hand: tuple):
     '''
