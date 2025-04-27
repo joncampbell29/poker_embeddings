@@ -3,8 +3,9 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import torch
 from torch.utils.data import Dataset
+import torch.nn.functional as F
 from .constants import HANDS_DICT, DECK_DICT
-from .hands import card_distance, normalize_hand
+from .hands import card_distance, normalize_hand, create_deck_graph, query_subgraph
 import random
 from treys import Card, Evaluator
 from torch_geometric.data import Data
@@ -69,7 +70,6 @@ class EquityDiffDataset:
             torch.tensor(equity_diff, dtype=torch.float32)
         )
 
-
 class UCIrvineDataset(Dataset):
     def __init__(self, X, y, add_random_cards=True, use_card_ids=True, graph=True, normalize_x=True):
         self.X = X
@@ -79,13 +79,15 @@ class UCIrvineDataset(Dataset):
         self.graph = graph
         self.normalize_x = normalize_x
         self.evaluator = Evaluator()
-        self.card_to_id = {card: idx for idx, card in DECK_DICT.items()}
+
         self.deck_treys = np.array([Card.new(c) for c in DECK_DICT.values()])
         self.card_int_to_id = {Card.new(card): idx for idx, card in DECK_DICT.items()}
 
-        self.card_ids = self.X.filter(regex='id').to_numpy()
+        self.card_ids = torch.tensor(self.X.filter(regex='id').to_numpy(), dtype=torch.long)
         self.card_treys = self.X.filter(regex='treys').to_numpy()
         self.y_CLASS = torch.tensor(self.y['CLASS'].to_numpy(), dtype=torch.long)
+
+        self.deck_edge_index, self.deck_edge_attr = create_deck_graph(normalize=True)
 
     def __getitem__(self, idx):
         y = self.y.iloc[idx]
@@ -95,15 +97,14 @@ class UCIrvineDataset(Dataset):
             cards_id = self.sample_random_board(card_treys, cards_id, y['CLASS_str'])
 
         if not self.graph:
-            cards_id = np.pad(cards_id, (0, 7 - len(cards_id)), constant_values=-1)
+            cards_id = F.pad(cards_id, (0, 7 - len(cards_id)), value=-1)
             return (
-                torch.tensor(cards_id, dtype=torch.long),
+                cards_id,
                 self.y_CLASS[idx]
             )
-        cards_id = torch.tensor(cards_id, dtype=torch.long)
 
         if self.use_card_ids:
-            x = cards_id.unsqueeze(1)
+            x = cards_id
         else:
             rank = cards_id // 4
             suit = cards_id % 4
@@ -112,7 +113,6 @@ class UCIrvineDataset(Dataset):
                 suit = suit / 3.0
             x = torch.stack([rank, suit], dim=1)
         data = self.create_graph(cards_id, x, self.y_CLASS[idx])
-
         return data
 
     def sample_random_board(self, used_treys, base_board, label_str):
@@ -127,37 +127,17 @@ class UCIrvineDataset(Dataset):
                 full_hand = used_list + sampled
                 hand_rank = evaluator.get_rank_class(evaluator.evaluate([], full_hand))
                 if evaluator.class_to_string(hand_rank) == label_str:
-                    sampled_ids = np.array([self.card_int_to_id[card] for card in sampled])
-                    full_board = np.concatenate((base_board, sampled_ids))
+                    sampled_ids = torch.tensor([self.card_int_to_id[card] for card in sampled])
+                    full_board = torch.cat((base_board, sampled_ids), dim=0)
                     return full_board
             else:
                 return base_board
         else:
             return base_board
 
-    def create_graph(self, cards_id, x, y):
-        ranks = cards_id // 4
-        suits = cards_id % 4
-        num_cards = cards_id.size(0)
-        idx_i = cards_id.unsqueeze(1).expand(num_cards, num_cards)
-        idx_j = cards_id.unsqueeze(0).expand(num_cards, num_cards)
-
-        ranks_i = ranks.unsqueeze(1).expand(num_cards, num_cards)
-        ranks_j = ranks.unsqueeze(0).expand(num_cards, num_cards)
-
-        suits_i = suits.unsqueeze(1).expand(num_cards, num_cards)
-        suits_j = suits.unsqueeze(0).expand(num_cards, num_cards)
-
-        suit_match = suits_i == suits_j
-        rank_close = (torch.abs(ranks_i - ranks_j) <= 1) | (torch.abs(ranks_i - ranks_j) == 12)
-
-        not_self = idx_i != idx_j
-
-        edge_mask = (suit_match | rank_close) & not_self
-
-        edge_index = edge_mask.nonzero(as_tuple=False).t().contiguous()
-
-        data = Data(x=x, edge_index=edge_index, y=y)
+    def create_graph(self, cards_ids, x, y):
+        subgraph_edge_index, subgraph_edge_attr = query_subgraph(cards_ids, self.deck_edge_index, self.deck_edge_attr)
+        data = Data(x=x, edge_index=subgraph_edge_index, edge_attr=subgraph_edge_attr, y=y)
         return data
 
     def __len__(self):

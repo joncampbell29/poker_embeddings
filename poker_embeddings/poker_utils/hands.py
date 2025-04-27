@@ -1,6 +1,7 @@
 from .constants import DECK_DICT, HANDS, RANKS_DICT
 from itertools import combinations, product
 import numpy as np
+import torch
 
 def normalize_hand(hand: tuple):
     card1, card2 = hand
@@ -34,28 +35,26 @@ def get_possible_hands(hand: str):
         return list(filter(filter_func, combos))
 
 
-_rank_values = {j:i for i,j in RANKS_DICT.items()}
-def card_distance(hand):
-    if hand[0] == hand[1]: return 0
-    def calc_dist(val1,val2):
-        standard_sep = abs(val1 - val2)
-        if 12 not in (val1, val2):
+_card_to_idx = {card: idx for idx, card in DECK_DICT.items()}
+def card_distance(hands):
+    if hands[0] == hands[1]: return 0
+    def calc_dist(rank1,rank2):
+        standard_sep = abs(rank1 - rank2)
+        if 12 not in (rank1, rank2):
             return standard_sep
-        if val1 == 12:
-            alt_sep = abs(val2 + 1)
+        if rank1 == 12:
+            alt_sep = abs(rank2 + 1)
             return min(standard_sep, alt_sep)
-        elif val2 == 12:
-            alt_sep = abs(val1 + 1)
+        elif rank2 == 12:
+            alt_sep = abs(rank1 + 1)
             return min(standard_sep, alt_sep)
 
-    if isinstance(hand, str):
-        rank1, rank2 = hand
-        value1 = _rank_values[rank1]
-        value2 = _rank_values[rank2]
-        return calc_dist(value1,value2)
+    if isinstance(hands[0], str):
+        rank1, rank2 = _card_to_idx[hands[0]] // 4, _card_to_idx[hands[1]] // 4
+        return calc_dist(rank1,rank2)
     else:
-        value1, value2 = hand
-        return calc_dist(value1,value2)
+        rank1, rank2 = hands[0] // 4, hands[1] // 4
+        return calc_dist(rank1,rank2)
 
 
 def find_blocked_hands(hand: tuple):
@@ -74,82 +73,46 @@ def find_blocked_hands(hand: tuple):
     return blocked_hands
 
 
-def find_blocked_hands_simple(hand: str):
-    '''
-    Returns dictionary of hands if blocks and the number of combos it blocks
-    '''
-    if hand[-1] == "s":
-        card1 = hand[0]+"c"
-        card2 = hand[1]+"c"
-    else:
-        card1 = hand[0]+"c"
-        card2 = hand[1]+"d"
-    hand = (card1, card2)
-    blocked_hands = []
+def fully_connected_edge_index(num_nodes):
+    row = torch.arange(num_nodes).repeat_interleave(num_nodes)
+    col = torch.arange(num_nodes).repeat(num_nodes)
+    mask = row != col
+    edge_index = torch.stack([row[mask], col[mask]], dim=0)
+    return edge_index
 
-    for possible_hand in HANDS:
-        if (possible_hand == hand) or (possible_hand == (hand[1], hand[0])):
-            continue
+def create_deck_graph(normalize=True):
+    edge_index = fully_connected_edge_index(52)
+    num_edges = edge_index.shape[1]
+    edge_attr = torch.zeros((num_edges, 2), dtype=torch.float)
 
-        if card1 in possible_hand or card2 in possible_hand:
-            blocked_hands.append(possible_hand)
-    hands, counts = np.unique(np.array([normalize_hand(i) for i in blocked_hands]), return_counts=True)
+    for idx in range(num_edges):
+        i, j = edge_index[:, idx]
 
-    blocked_combos_dict = {i:j for i,j in zip(hands, counts)}
-    return blocked_combos_dict
+        suit_i = i % 4
+        suit_j = j % 4
 
+        distance = card_distance((i, j))
+        if normalize:
+            dist_weight = (11 - distance) / 11  # scale: closer ranks → higher weight
+        else:
+            dist_weight = distance
+        suited = int(suit_i == suit_j)
 
+        edge_attr[idx, 0] = dist_weight
+        edge_attr[idx, 1] = suited
 
-def find_dominated_hands(hand: str):
-    if hand[-1] == "s":
-        card1 = hand[0]+"c"
-        card2 = hand[1]+"c"
-    else:
-        card1 = hand[0]+"c"
-        card2 = hand[1]+"d"
+    return edge_index, edge_attr
 
-    rank1, rank2 = card1[0], card2[0]
+def query_subgraph(card_ids, full_edge_index, full_edge_attr):
+    sources = full_edge_index[0]
+    destinations = full_edge_index[1]
+    edge_mask = torch.isin(sources, card_ids) & torch.isin(destinations, card_ids)
+    sub_edge_index = full_edge_index[:, edge_mask]
+    sub_edge_attr = full_edge_attr[edge_mask]
+    card_id_to_new_idx = {card.item(): idx for idx, card in enumerate(card_ids)}
+    new_src = torch.tensor([card_id_to_new_idx[s.item()] for s in sub_edge_index[0]])
+    new_dst = torch.tensor([card_id_to_new_idx[d.item()] for d in sub_edge_index[1]])
 
-    card_ranks = '23456789TJQKA'
+    sub_edge_index = torch.stack([new_src, new_dst], dim=0)
 
-    dominated_hands = []
-    for possible_hand in HANDS:
-        # Skip the hand itself
-        if possible_hand == hand:
-            continue
-
-        # Extract ranks from the possible hand
-        possible_rank1, possible_rank2 = possible_hand[0][0], possible_hand[1][0]
-        if possible_rank1 == possible_rank2:
-            continue
-
-        if rank1 != possible_rank1 and rank1 != possible_rank2 and rank2 != possible_rank1 and rank2 != possible_rank2:
-            continue
-        # Check for domination scenarios
-
-        # Case 1: Hand shares rank1 with possible hand
-        if rank1 == possible_rank1:
-            # Check if rank2 is higher than possible_rank2
-            if card_ranks.index(rank2) > card_ranks.index(possible_rank2):
-                dominated_hands.append(possible_hand)
-        elif rank1 == possible_rank2:
-            # Check if rank2 is higher than possible_rank1
-            if card_ranks.index(rank2) > card_ranks.index(possible_rank1):
-                dominated_hands.append(possible_hand)
-
-        # Case 2: Hand shares rank2 with possible hand
-        elif rank2 == possible_rank1:
-            # Check if rank1 is higher than possible_rank2
-            if card_ranks.index(rank1) > card_ranks.index(possible_rank2):
-                dominated_hands.append(possible_hand)
-        elif rank2 == possible_rank2:
-            # Check if rank1 is higher than possible_rank1
-            if card_ranks.index(rank1) > card_ranks.index(possible_rank1):
-                dominated_hands.append(possible_hand)
-
-    hands, counts = np.unique(np.array([normalize_hand(i) for i in dominated_hands]), return_counts=True)
-
-    dominated_combos_dict = {i:j for i,j in zip(hands, counts)}
-    return dominated_combos_dict
-
-
+    return sub_edge_index, sub_edge_attr
