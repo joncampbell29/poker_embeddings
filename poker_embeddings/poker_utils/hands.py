@@ -1,9 +1,15 @@
-from .constants import DECK_DICT, HANDS, RANKS_DICT
+from .constants import DECK_DICT, HANDS
 from itertools import combinations, product
 import numpy as np
 import torch
+from typing import Tuple, Iterable, Union
 
-def normalize_hand(hand: tuple):
+def normalize_hand(hand: Tuple[str]) -> str:
+    '''
+    Takes 2 cards as a tuple and returns a normalized version
+    ex. i.e. ('Ah','Ac') --> 'Ao'; ('7d','8d') --> '87s'
+
+    '''
     card1, card2 = hand
     rank1 = card1[0]
     rank2 = card2[0]
@@ -15,7 +21,7 @@ def normalize_hand(hand: tuple):
     suffix = 's' if suit1 == suit2 else 'o'
     return f"{ranks[0]}{ranks[1]}{suffix}"
 
-def get_possible_hands(hand: str):
+def get_possible_hands(hand: str) -> Tuple[str]:
     '''
     Takes a hand in the rank + suited/offsuit format (i.e JJo, 76s)
     and returns the hands in the deck statisfying it
@@ -36,7 +42,11 @@ def get_possible_hands(hand: str):
 
 
 _card_to_idx = {card: idx for idx, card in DECK_DICT.items()}
-def card_distance(hands):
+def card_distance(hands: Iterable[Union[int, str]]) -> int:
+    '''
+    Takes a iterable of 2 cards as there deck index values or as strings
+    and returns the card distance
+    '''
     if hands[0] == hands[1]: return 0
     def calc_dist(rank1,rank2):
         standard_sep = abs(rank1 - rank2)
@@ -59,7 +69,7 @@ def card_distance(hands):
 
 def find_blocked_hands(hand: tuple):
     '''
-    Returns list of hands if blocks
+    Returns list of hands if the hand blocks the other
     '''
     card1, card2 = hand
     blocked_hands = []
@@ -73,14 +83,22 @@ def find_blocked_hands(hand: tuple):
     return blocked_hands
 
 
-def fully_connected_edge_index(num_nodes):
+def fully_connected_edge_index(num_nodes: int)-> torch.Tensor:
+    '''
+    Creates the edge index used by pytorch based on the number of nodes for a graph
+    '''
     row = torch.arange(num_nodes).repeat_interleave(num_nodes)
     col = torch.arange(num_nodes).repeat(num_nodes)
     mask = row != col
     edge_index = torch.stack([row[mask], col[mask]], dim=0)
     return edge_index
 
-def create_deck_graph(normalize=True):
+def create_deck_graph(normalize: bool=True)->Tuple[torch.Tensor, torch.Tensor]:
+    '''
+    Creates a fully connected graph of all 52 cards in a deck.
+    Edge attributes are 0,1 for suitedness and inverse max scaling for connectedness
+    if normalize is true, otherwise raw card distance
+    '''
     edge_index = fully_connected_edge_index(52)
     num_edges = edge_index.shape[1]
     edge_attr = torch.zeros((num_edges, 2), dtype=torch.float)
@@ -103,7 +121,12 @@ def create_deck_graph(normalize=True):
 
     return edge_index, edge_attr
 
-def query_subgraph(card_ids, full_edge_index, full_edge_attr):
+def query_subgraph(card_ids: torch.Tensor,
+                   full_edge_index: torch.Tensor,
+                   full_edge_attr: torch.Tensor)->Tuple[torch.Tensor, torch.Tensor]:
+    '''
+    Creates a subgraph of the cards of choice from the full deck graph producted by create_deck_graph()
+    '''
     sources = full_edge_index[0]
     destinations = full_edge_index[1]
     edge_mask = torch.isin(sources, card_ids) & torch.isin(destinations, card_ids)

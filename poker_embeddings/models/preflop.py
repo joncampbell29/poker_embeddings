@@ -2,59 +2,6 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 
-
-# class ContrastiveEncoder(nn.Module):
-#     def __init__(self, input_dim=271, embedding_dim=32, proj_dim=32):
-#         super().__init__()
-#         self.encoder = nn.Sequential(
-#             nn.Linear(input_dim, 128),
-#             nn.ReLU(),
-#             nn.Linear(128, embedding_dim)
-#         )
-#         self.projection_head = nn.Sequential(
-#             nn.Linear(embedding_dim, proj_dim),
-#             nn.ReLU(),
-#             nn.Linear(proj_dim, proj_dim)
-#         )
-
-#     def forward(self, x):
-#         embedding = self.encoder(x)
-#         proj = self.projection_head(embedding)
-#         proj = F.normalize(proj, p=2, dim=1)
-#         return embedding, proj
-
-
-
-# class PreFlopVAE(nn.Module):
-#     def __init__(self, input_size=102, embedding_dim=16):
-#         super().__init__()
-
-#         self.encoder = nn.Sequential(
-#             nn.Linear(input_size, 64)
-#         )
-
-#         self.mean_fc = nn.Linear(64, embedding_dim)
-#         self.logvar_fc = nn.Linear(64, embedding_dim)
-
-#         self.decoder = nn.Sequential(
-#             nn.Linear(embedding_dim, 64),
-#             nn.LeakyReLU(),
-#             nn.Linear(64, input_size)
-#         )
-#     def reparameterize(self, mean, logvar):
-#         std = torch.exp(0.5 * logvar)
-#         eps = torch.randn_like(std)
-#         z = mean + eps * std
-#         return z
-
-#     def forward(self, x):
-#         h = self.encoder(x)
-#         mean = self.mean_fc(h)
-#         logvar = self.logvar_fc(h)
-#         z = self.reparameterize(mean, logvar)
-#         recon = self.decoder(z)
-#         return recon, mean, logvar
-
 class EVcVAE(nn.Module):
     def __init__(self, embedding_dim, hidden_dim, c_dim):
         super().__init__()

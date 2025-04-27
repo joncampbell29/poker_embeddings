@@ -39,7 +39,10 @@ def create_similarity_top_bottom(similarity_df, hands_of_interest):
 
     return pd.DataFrame(records)
 
-def plot_train_loss(train_losses, val_losses=None, figsize=(5,5)):
+def plot_train_loss(train_losses: list, val_losses: list=None, figsize: tuple=(5,5))->None:
+    '''
+    Plots trian losses, and val losses if provided
+    '''
     plt.figure(figsize=figsize)
     plt.plot(train_losses, label='Training Loss')
     if val_losses is not None:
@@ -240,7 +243,16 @@ def save_model_and_embeddings(embeddings, embedding_filename, model=None, state_
         torch.save(model.state_dict(), os.path.join(weight_dir, state_dict_filename+".pth"))
 
 
-def benchmark_dataloader(dataset, batch_sizes=[64, 128, 256, 512, 1024], num_workers_list=[0, 1, 2, 4, 8], num_runs=10, graph=False):
+def benchmark_dataloader(
+        dataset: torch.utils.data.Dataset,
+        batch_sizes: list=[64, 128, 256, 512, 1024],
+        num_workers_list: list=[0, 1, 2, 4, 8],
+        num_runs: int=10,
+        graph: bool=False)->None:
+    '''
+    Times a pytorch dataloader for the fastest combination of batch size, num workers
+    If dataset is a graph dataset set graph to True
+    '''
     print(f"Dataset size: {len(dataset)} samples")
 
     best_time = float('inf')
