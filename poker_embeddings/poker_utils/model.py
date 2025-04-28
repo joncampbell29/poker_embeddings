@@ -101,54 +101,6 @@ def analyze_embeddings(
     print(top_bottom_df)
     return similarity_df
 
-def get_feature_importance(model, input_tensor, feature_names, prediction_idx=None, target_idx=None):
-    model.eval()
-    num_hands = input_tensor.shape[0]
-    input_tensor = input_tensor.clone().detach().requires_grad_(True)
-
-    with torch.no_grad():
-        output_sample = model(input_tensor[0].unsqueeze(0))
-        if isinstance(output_sample, tuple):
-            output_sample = output_sample[prediction_idx]
-        num_targets = output_sample.shape[-1]
-
-    all_importances = []
-
-    for hand_idx in range(num_hands):
-        hand_input = input_tensor[hand_idx].unsqueeze(0).clone().detach().requires_grad_(True)
-        output = model(hand_input)
-        if isinstance(output, tuple):
-            output = output[prediction_idx]
-
-        output = output.squeeze(0)
-
-        hand_importances = []
-        for i in range(num_targets):
-            model.zero_grad()
-            hand_input.grad = None
-            output[i].backward(retain_graph=True)
-            grad = hand_input.grad.abs().squeeze().detach().clone()
-            hand_importances.append(grad)
-
-        hand_importances = torch.stack(hand_importances)  # [num_targets, num_features]
-        all_importances.append(hand_importances)
-
-    all_importances = torch.stack(all_importances)  # [num_hands, num_targets, num_features]
-    return all_importances
-    # mean_importance_per_hand = pd.DataFrame(
-    #     all_importances.mean(dim=1).numpy(),
-    #     index=list(HANDS_DICT.values()),
-    #     columns=feature_names)
-    # plt.figure(figsize=(20, 12))
-
-    # ax = sns.heatmap(mean_importance_per_hand,
-    #                 cmap='YlOrRd',
-    #                 robust=True,
-    #                 cbar_kws={'label': 'importance'})
-
-    # plt.title('Importance Heatmap by Hand and Feature')
-    # plt.tight_layout()
-    # plt.show()
 
 def prob_embeddings(embedding, prob_data):
     if isinstance(embedding, torch.Tensor):
