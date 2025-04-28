@@ -3,89 +3,103 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import torch_geometric as tg
 import torch
+import torch.optim as optim
 import argparse
 import os
 import torch.nn.functional as F
 from poker_embeddings.models.card import CardGNN
-from poker_embeddings.poker_utils.constants import DECK_DICT
 from poker_embeddings.poker_utils.datasets import UCIrvineDataset
 from sklearn.metrics import classification_report, confusion_matrix
+import yaml
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, required=True, help="Path to config file")
+    return parser.parse_args()
+
+def load_config(config_path):
+    with open(config_path, 'r') as f:
+        return yaml.safe_load(f)
 
 def train_model(model, trainloader, optimizer, scheduler=None, device=None,
-                valloader=None, epochs=50, leftoff=0, save=True):
+                valloader=None, class_weights=None, epochs=50,
+                leftoff=0, save=False, save_dir="./model_weights/hand_rank_predictor", save_interval=None):
 
     train_losses = []
     val_losses = []
     train_accuracies = []
     val_accuracies = []
-    class_weights = torch.load("./model_weights/class_weights.pt", weights_only=True).to(device)
-    for epoch in range(epochs):
-        tot_train_loss = 0
-        correct_train = 0
-        total_train = 0
+    try:
+        for epoch in range(epochs):
+            tot_train_loss = 0
+            correct_train = 0
+            total_train = 0
 
-        model.train()
-        for batch_data in trainloader:
-            batch_data = batch_data.to(device)
-            optimizer.zero_grad()
+            model.train()
+            for batch_data in trainloader:
+                batch_data = batch_data.to(device)
+                optimizer.zero_grad()
 
-            logits = model(batch_data)
+                logits = model(batch_data)
 
-            batch_loss = F.cross_entropy(logits, batch_data.y, weight=class_weights)
-            batch_loss.backward()
-            optimizer.step()
+                batch_loss = F.cross_entropy(logits, batch_data.y, weight=class_weights)
+                batch_loss.backward()
+                optimizer.step()
 
-            tot_train_loss += batch_loss.item()
-            preds = logits.argmax(dim=1)
-            correct_train += (preds == batch_data.y).sum().item()
-            total_train += batch_data.y.size(0)
+                tot_train_loss += batch_loss.item()
+                preds = logits.argmax(dim=1)
+                correct_train += (preds == batch_data.y).sum().item()
+                total_train += batch_data.y.size(0)
 
-        avg_train_loss = tot_train_loss / len(trainloader)
-        train_acc = correct_train / total_train
-        train_losses.append(avg_train_loss)
-        train_accuracies.append(train_acc)
+            avg_train_loss = tot_train_loss / len(trainloader)
+            train_acc = correct_train / total_train
+            train_losses.append(avg_train_loss)
+            train_accuracies.append(train_acc)
 
+            if valloader is not None:
+                model.eval()
+                tot_val_loss = 0
+                correct_val = 0
+                total_val = 0
+
+                with torch.no_grad():
+                    for batch_data in valloader:
+                        batch_data = batch_data.to(device)
+                        logits = model(batch_data)
+                        batch_loss = F.cross_entropy(logits, batch_data.y, weight=class_weights)
+
+                        tot_val_loss += batch_loss.item()
+                        preds = logits.argmax(dim=1)
+                        correct_val += (preds == batch_data.y).sum().item()
+                        total_val += batch_data.y.size(0)
+
+                avg_val_loss = tot_val_loss / len(valloader)
+                val_acc = correct_val / total_val
+                val_losses.append(avg_val_loss)
+                val_accuracies.append(val_acc)
+
+            if valloader is not None:
+                print(f"Epoch {epoch+1}/{epochs}, Train Loss: {avg_train_loss:.4f}, Train Acc: {train_acc:.4f}, "
+                      f"Val Loss: {avg_val_loss:.4f}, Val Acc: {val_acc:.4f}")
+            else:
+                print(f"Epoch {epoch+1}/{epochs}, Train Loss: {avg_train_loss:.4f}, Train Acc: {train_acc:.4f}")
+            if save:
+                if (epoch + 1) % save_interval == 0:
+                    torch.save(model.state_dict(), os.path.join(save_dir, f"hand_rank_predictor{leftoff+epoch+1}.pth"))
+
+            if scheduler is not None:
+                    scheduler.step()
+    except KeyboardInterrupt:
+        torch.save(model.state_dict(), os.path.join(save_dir, f"hand_rank_predictor_intrp{leftoff+epoch+1}.pth"))
+        print(f"Ending at Epoch {epoch+1}/{epochs}.")
+    finally:
         if valloader is not None:
-            model.eval()
-            tot_val_loss = 0
-            correct_val = 0
-            total_val = 0
-
-            with torch.no_grad():
-                for batch_data in valloader:
-                    batch_data = batch_data.to(device)
-                    logits = model(batch_data)
-                    batch_loss = F.cross_entropy(logits, batch_data.y, weight=class_weights)
-
-                    tot_val_loss += batch_loss.item()
-                    preds = logits.argmax(dim=1)
-                    correct_val += (preds == batch_data.y).sum().item()
-                    total_val += batch_data.y.size(0)
-
-            avg_val_loss = tot_val_loss / len(valloader)
-            val_acc = correct_val / total_val
-            val_losses.append(avg_val_loss)
-            val_accuracies.append(val_acc)
-
-        if valloader is not None:
-            print(f"Epoch {epoch+1}/{epochs}, Train Loss: {avg_train_loss:.4f}, Train Acc: {train_acc:.4f}, "
-                  f"Val Loss: {avg_val_loss:.4f}, Val Acc: {val_acc:.4f}")
+            return {"train_loss":train_losses,
+                    "val_loss":val_losses,
+                    "train_accuracy":train_accuracies,
+                    "val_accuracy":val_accuracies}
         else:
-            print(f"Epoch {epoch+1}/{epochs}, Train Loss: {avg_train_loss:.4f}, Train Acc: {train_acc:.4f}")
-        if save:
-            if (epoch + 1) % 25 == 0:
-                torch.save(model.state_dict(), f"../model_weights/hand_strength_predictor{leftoff+epoch+1}.pth")
-
-        if scheduler is not None:
-                scheduler.step()
-
-    if valloader is not None:
-        return {"train_loss":train_losses,
-                "val_loss":val_losses,
-                "train_accuracy":train_accuracies,
-                "val_accuracy":val_accuracies}
-    else:
-        return {'train_loss':train_losses, "train_accuracy":train_accuracies}
+            return {'train_loss':train_losses, "train_accuracy":train_accuracies}
 
 def get_classification_report(model, dataloader, device=None):
     all_preds = []
@@ -113,80 +127,101 @@ def get_classification_report(model, dataloader, device=None):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train a hand rank predictor model.")
-    parser.add_argument("--test_size", type=float, default=0.6, help="Percentage of Data to use for test set")
-    parser.add_argument("--weights", type=str, default="", help="Path to the model weights")
-    parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
-    parser.add_argument("--learning_rate", type=float, default=1e-3, help="Learning rate for the optimizer")
-    parser.add_argument("--leftoff", type=int, default=0, help="Epoch to start training from")
-    parser.add_argument("--save_weights", type=bool, default=True, help="Save model weights")
-    args = parser.parse_args()
+    args = parse_args()
+    cfg = load_config(args.config)
 
-
-    X = pd.read_csv("./data/uc_irvine/X.csv")
-    y = pd.read_csv("./data/uc_irvine/y.csv")
+    X = pd.read_csv(cfg["data"]["X_path"])
+    y = pd.read_csv(cfg["data"]["y_path"])
     X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=args.test_size, random_state=29, stratify=y['CLASS']
+        X, y, test_size=cfg["data"]["test_size"], random_state=29, stratify=y['CLASS']
         )
     X_train = X_train.reset_index(drop=True)
     y_train = y_train.reset_index(drop=True)
     X_val = X_val.reset_index(drop=True)
     y_val = y_val.reset_index(drop=True)
 
-    train_dataset = UCIrvineDataset(X_train, y_train, add_random_cards=True, use_card_ids=True,
-                           graph=True, normalize_x=True)
-    val_dataset = UCIrvineDataset(X_val, y_val, add_random_cards=True, use_card_ids=True,
-                           graph=True, normalize_x=True)
+    train_dataset = UCIrvineDataset(X_train, y_train, add_random_cards=True, use_card_ids=True, graph=True, normalize_x=True)
+    val_dataset = UCIrvineDataset(X_val, y_val, add_random_cards=True, use_card_ids=True, graph=True, normalize_x=True)
 
     trainloader = tg.loader.DataLoader(
         train_dataset,
-        batch_size=512,
+        batch_size=cfg["dataloader"]["batch_size"],
         shuffle=True,
-        num_workers=10,
-        pin_memory=True
-        )
+        num_workers=cfg["dataloader"]["num_workers"],
+        pin_memory=cfg["dataloader"]["pin_memory"]
+    )
     valloader = tg.loader.DataLoader(
         val_dataset,
-        batch_size=512,
+        batch_size=cfg["dataloader"]["batch_size"],
         shuffle=False,
-        num_workers=10,
-        pin_memory=True
-        )
+        num_workers=cfg["dataloader"]["num_workers"],
+        pin_memory=cfg["dataloader"]["pin_memory"]
+    )
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if cfg["training"]["device"] == "cuda":
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    else:
+        device = torch.device(cfg["training"]["device"])
 
-    model = CardGNN().to(device)
-    if args.weights != '':
-        args.weights = os.path.join("./model_weights", args.weights)
-        model.load_state_dict(torch.load(args.weights, weights_only=True))
+    model_param_cfg = cfg["model"]["params"]
+    model = CardGNN(**model_param_cfg).to(device)
+    if cfg["model"]["weights_path"]:
+        model.load_state_dict(torch.load(cfg["model"]["weights_path"], weights_only=True))
 
-    optimizer = torch.optim.Adam(model.parameters(), lr= args.learning_rate)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
+    opt_cfg = cfg["training"]["optimizer"]
+    optimizer_class = getattr(optim, opt_cfg["type"])
+    optimizer = optimizer_class(
+        model.parameters(),
+        **{p_name: p_val for p_name, p_val in opt_cfg.items() if p_name != "type"})
+
+    scheduler = None
+    sched_cfg = cfg["training"]["scheduler"]
+    if sched_cfg.get("use_scheduler", False):
+        scheduler_class = getattr(optim.lr_scheduler, sched_cfg["type"])
+        scheduler = scheduler_class(
+            optimizer,
+            **{p_name: p_val for p_name, p_val in sched_cfg.items() if p_name not in ["type", "use_scheduler"]})
+
+    class_weights = torch.load(cfg["class_weights_path"], weights_only=True).to(device)
 
     res = train_model(
         model=model,
         trainloader=trainloader,
-        valloader=None,
+        valloader=valloader,
         optimizer=optimizer,
         scheduler=scheduler,
+        class_weights=class_weights,
         device=device,
-        epochs=args.epochs,
-        leftoff=args.leftoff,
-        save=args.save_weights
-        )
-    res = pd.DataFrame.from_dict(res)
-    res['epochs'] = np.arange(args.leftoff+1, args.leftoff+1 + args.epochs)
-    res.to_csv(f"./results/hand_rank_predictor_train_loss{args.leftoff+args.epochs}.csv", index=False)
+        epochs=cfg["training"]["epochs"],
+        leftoff=cfg["training"]["start_epoch"],
+        save=cfg["training"]["save_weights"],
+        save_dir=cfg["model"]["save_dir"],
+        save_interval=cfg["training"]["save_interval"]
+    )
+
+    res_df = pd.DataFrame.from_dict(res)
+    epochs = res_df.shape[0]
+    res_df["epochs"] = np.arange(cfg["training"]["start_epoch"] + 1, cfg["training"]["start_epoch"] + 1 + epochs)
+    res_df.to_csv(
+        os.path.join(
+            cfg["results"]["save_dir"], f"hand_rank_predictor_train_loss_{cfg['training']['start_epoch'] + epochs}.csv"),
+            index=False
+            )
+
     pred_res = get_classification_report(model, valloader, device=device)
-    classification_report = pd.DataFrame.from_dict(pred_res['report']).T
-    classification_report.to_csv(f"./results/hand_rank_predictor_classification_report{args.leftoff+args.epochs}.csv")
+    pd.DataFrame.from_dict(pred_res['report']).T.to_csv(
+        os.path.join(
+            cfg["results"]["save_dir"], f"hand_rank_predictor_classification_report_{cfg['training']['start_epoch'] + epochs}.csv")
+    )
 
-    class_names = [
-        "High Card", "Pair", "Two Pair", "Three of a Kind", "Straight",
-        "Flush", "Full House", "Four of a Kind", "Straight Flush", "Royal Flush"
-        ]
-    cm = pd.DataFrame(pred_res['confusion_matrix'],
-                      index=class_names, columns=class_names)
+    class_names = ["High Card", "Pair", "Two Pair", "Three of a Kind", "Straight", "Flush",
+                   "Full House", "Four of a Kind", "Straight Flush", "Royal Flush"]
 
-    cm.to_csv(f"./results/hand_rank_predictor_confusion_matrix{args.leftoff+args.epochs}.csv")
+    pd.DataFrame(pred_res['confusion_matrix'], index=class_names, columns=class_names).to_csv(
+        os.path.join(
+            cfg["results"]["save_dir"], f"hand_rank_predictor_confusion_matrix_{cfg['training']['start_epoch'] + epochs}.csv")
+    )
+
+    with open(os.path.join(cfg["results"]["save_dir"], f"config_used.yaml"), "w") as f:
+        yaml.safe_dump(cfg, f)
 
