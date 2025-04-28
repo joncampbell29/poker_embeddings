@@ -11,21 +11,22 @@ dataloader:
 
 training:
   optimizer:
-    type: "AdamW"
-    lr: 0.0005
-    weight_decay: 0.01
+    type: "Adam"
+    lr: 0.0001
+    weight_decay: 0.0
 
   scheduler:
-    type: "StepLR"
-    step_size: 100
-    gamma: 0.1
-    use_scheduler: true
+    type: null
+    step_size: null
+    gamma: null
+    use_scheduler: null
 
   device: "cuda"
-  epochs: 200
+  epochs: 90
   save_weights: true
-  start_epoch: 0
+  start_epoch: 270
   save_interval: 30
+  val_during_training: false
 
 model:
   params:
@@ -33,10 +34,10 @@ model:
     hidden_dim: 16
     out_dim: 16
     edge_attr_dim: 2
-  weights_path: ""
+  weights_path: "./model_weights/hand_rank_predictor/hand_rank_predictor270.pth"
   save_dir: "./model_weights/hand_rank_predictor"
 
 results:
-  save_dir: "./training_results/hand_rank_predictor"
+  save_dir: "./training_results/hand_rank_predictor/run3"
 
 class_weights_path: "./data/uc_irvine/class_weights.pt"

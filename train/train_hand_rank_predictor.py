@@ -86,6 +86,8 @@ def train_model(model, trainloader, optimizer, scheduler=None, device=None,
             if save:
                 if (epoch + 1) % save_interval == 0:
                     torch.save(model.state_dict(), os.path.join(save_dir, f"hand_rank_predictor{leftoff+epoch+1}.pth"))
+                if epoch+1 == epochs:
+                    torch.save(model.state_dict(), os.path.join(save_dir, f"hand_rank_predictor{leftoff+epoch+1}.pth"))
 
             if scheduler is not None:
                     scheduler.step()
@@ -129,6 +131,9 @@ def get_classification_report(model, dataloader, device=None):
 if __name__ == "__main__":
     args = parse_args()
     cfg = load_config(args.config)
+
+    os.makedirs(cfg["model"]["save_dir"], exist_ok=True)
+    os.makedirs(cfg["results"]["save_dir"], exist_ok=True)
 
     X = pd.read_csv(cfg["data"]["X_path"])
     y = pd.read_csv(cfg["data"]["y_path"])
@@ -189,7 +194,7 @@ if __name__ == "__main__":
     res = train_model(
         model=model,
         trainloader=trainloader,
-        valloader=valloader,
+        valloader=valloader if cfg['training']['val_during_training'] else None,
         optimizer=optimizer,
         scheduler=scheduler,
         class_weights=class_weights,
@@ -214,15 +219,19 @@ if __name__ == "__main__":
             )
 
     pred_res = get_classification_report(model, valloader, device=device)
-    pd.DataFrame.from_dict(pred_res['report']).T.to_csv(
+    report = pd.DataFrame.from_dict(pred_res['report']).T
+    report.to_csv(
         os.path.join(
             cfg["results"]["save_dir"], f"hand_rank_predictor_classification_report_{cfg['training']['start_epoch'] + epochs}.csv")
     )
+    report.rename({'Unnamed: 0':'class'},axis=1, inplace=True)
 
     class_names = ["High Card", "Pair", "Two Pair", "Three of a Kind", "Straight", "Flush",
                    "Full House", "Four of a Kind", "Straight Flush", "Royal Flush"]
 
-    pd.DataFrame(pred_res['confusion_matrix'], index=class_names, columns=class_names).to_csv(
+    cm = pd.DataFrame(pred_res['confusion_matrix'], index=class_names, columns=class_names).reset_index()
+    cm.rename({'index':'class'}, axis=1, inplace=True)
+    cm.to_csv(
         os.path.join(
             cfg["results"]["save_dir"], f"hand_rank_predictor_confusion_matrix_{cfg['training']['start_epoch'] + epochs}.csv")
     )

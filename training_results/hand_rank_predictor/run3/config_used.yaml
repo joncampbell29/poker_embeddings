@@ -1,0 +1,35 @@
+class_weights_path: ./data/uc_irvine/class_weights.pt
+data:
+  X_path: ./data/uc_irvine/X.csv
+  test_size: 0.6
+  y_path: ./data/uc_irvine/y.csv
+dataloader:
+  batch_size: 512
+  num_workers: 10
+  pin_memory: true
+model:
+  params:
+    card_emb_dim: 16
+    edge_attr_dim: 2
+    hidden_dim: 16
+    out_dim: 16
+  save_dir: ./model_weights/hand_rank_predictor
+  weights_path: ./model_weights/hand_rank_predictor/hand_rank_predictor270.pth
+results:
+  save_dir: ./training_results/hand_rank_predictor/run3
+training:
+  device: cuda
+  epochs: 90
+  optimizer:
+    lr: 0.0001
+    type: Adam
+    weight_decay: 0.0
+  save_interval: 30
+  save_weights: true
+  scheduler:
+    gamma: null
+    step_size: null
+    type: null
+    use_scheduler: null
+  start_epoch: 270
+  val_during_training: false
