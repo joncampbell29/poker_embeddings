@@ -148,14 +148,16 @@ if __name__ == "__main__":
         batch_size=cfg["dataloader"]["batch_size"],
         shuffle=True,
         num_workers=cfg["dataloader"]["num_workers"],
-        pin_memory=cfg["dataloader"]["pin_memory"]
+        pin_memory=cfg["dataloader"]["pin_memory"],
+        persistent_workers=True
     )
     valloader = tg.loader.DataLoader(
         val_dataset,
         batch_size=cfg["dataloader"]["batch_size"],
         shuffle=False,
         num_workers=cfg["dataloader"]["num_workers"],
-        pin_memory=cfg["dataloader"]["pin_memory"]
+        pin_memory=cfg["dataloader"]["pin_memory"],
+        persistent_workers=True
     )
 
     if cfg["training"]["device"] == "cuda":
@@ -198,8 +200,11 @@ if __name__ == "__main__":
         save_dir=cfg["model"]["save_dir"],
         save_interval=cfg["training"]["save_interval"]
     )
-
+    min_len = min(len(v) for v in res.values())
+    for k in res.keys():
+        res[k] = res[k][:min_len]
     res_df = pd.DataFrame.from_dict(res)
+
     epochs = res_df.shape[0]
     res_df["epochs"] = np.arange(cfg["training"]["start_epoch"] + 1, cfg["training"]["start_epoch"] + 1 + epochs)
     res_df.to_csv(
