@@ -4,6 +4,7 @@ from poker_embeddings.poker_utils.constants import HANDS_DICT, DECK_DICT
 import os
 import pandas as pd
 import numpy as np
+import torch
 
 
 suit_id_mapping = {'c':0,'d':1,'h':2,'s':3}
@@ -48,6 +49,12 @@ if __name__ == '__main__':
 
     y['CLASS_str'] = y['CLASS'].map(uc_irvine_class_mapping)
     y['score_treys'] = X.apply(evaluate_hand, axis=1)
+
+    counts = torch.tensor((y['CLASS'].value_counts()).tolist())
+    total = counts.sum()
+    num_classes = len(counts)
+    weights = total / (num_classes * counts)
+    torch.save(weights, os.path.join(uc_dir, 'class_weights.pt'))
     X.drop(['C1','S1','C2','S2','C3','S3','C4','S4','C5','S5'], axis=1, inplace=True)
 
     X.to_csv(os.path.join(uc_dir,'X.csv'), index=False)

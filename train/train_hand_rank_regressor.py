@@ -21,7 +21,7 @@ def load_config(config_path):
         return yaml.safe_load(f)
 
 def train_model(model, trainloader, optimizer, scheduler=None, device=None,
-                valloader=None, epochs=50,
+                valloader=None, epochs=50, class_weights=None,
                 leftoff=0, save=False, save_dir="./model_weights/hand_rank_predictor", save_interval=None):
 
     train_losses = []
@@ -37,7 +37,11 @@ def train_model(model, trainloader, optimizer, scheduler=None, device=None,
 
                 output = model(batch_data)
 
-                batch_loss = F.mse_loss(output, batch_data.y.float().squeeze(-1))
+                batch_weights = class_weights[batch_data.y]
+                losses = F.mse_loss(output, batch_data.y.float().squeeze(-1), reduction="none")
+                batch_loss = (losses * batch_weights).mean()
+
+
                 batch_loss.backward()
                 optimizer.step()
                 tot_train_loss += batch_loss.item()
@@ -52,8 +56,13 @@ def train_model(model, trainloader, optimizer, scheduler=None, device=None,
                 with torch.no_grad():
                     for batch_data in valloader:
                         batch_data = batch_data.to(device)
-                        logits = model(batch_data)
-                        batch_loss = F.mse_loss(logits, batch_data.y.float().squeeze(-1))
+
+                        output = model(batch_data)
+
+                        batch_weights = class_weights[batch_data.y]
+                        losses = F.mse_loss(output, batch_data.y.float().squeeze(-1), reduction="none")
+                        batch_loss = (losses * batch_weights).mean()
+
                         tot_val_loss += batch_loss.item()
 
                 avg_val_loss = tot_val_loss / len(valloader)
@@ -144,12 +153,15 @@ if __name__ == "__main__":
             optimizer,
             **{p_name: p_val for p_name, p_val in sched_cfg.items() if p_name not in ["type", "use_scheduler"]})
 
+    class_weights = torch.load(cfg["class_weights_path"], weights_only=True).to(device)
+
     res = train_model(
         model=model,
         trainloader=trainloader,
         valloader=valloader if cfg['training']['val_during_training'] else None,
         optimizer=optimizer,
         scheduler=scheduler,
+        class_weights=class_weights,
         device=device,
         epochs=cfg["training"]["epochs"],
         leftoff=cfg["training"]["start_epoch"],

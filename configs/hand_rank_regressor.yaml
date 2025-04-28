@@ -22,8 +22,8 @@ training:
     use_scheduler: null
 
   device: "cuda"
-  epochs: 10
-  save_weights: false
+  epochs: 100
+  save_weights: true
   start_epoch: 0
   save_interval: 25
   val_during_training: false
@@ -39,3 +39,5 @@ model:
 
 results:
   save_dir: "./training_results/hand_rank_regressor/run1"
+
+class_weights_path: "./data/uc_irvine/class_weights.pt"
