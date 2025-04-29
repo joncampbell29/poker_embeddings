@@ -7,7 +7,7 @@ import torch.optim as optim
 import argparse
 import os
 import torch.nn.functional as F
-from poker_embeddings.models.card import CardGNN
+from poker_embeddings.models.card import HandClassifier
 from poker_embeddings.poker_utils.datasets import UCIrvineDataset
 from sklearn.metrics import classification_report, confusion_matrix
 import yaml
@@ -171,7 +171,7 @@ if __name__ == "__main__":
         device = torch.device(cfg["training"]["device"])
 
     model_param_cfg = cfg["model"]["params"]
-    model = CardGNN(**model_param_cfg).to(device)
+    model = HandClassifier(**model_param_cfg).to(device)
     if cfg["model"]["weights_path"]:
         model.load_state_dict(torch.load(cfg["model"]["weights_path"], weights_only=True))
 
