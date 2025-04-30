@@ -7,9 +7,8 @@ import torch.optim as optim
 import argparse
 import os
 import torch.nn.functional as F
-from poker_embeddings.models.card import HandClassifier
+from poker_embeddings.models.card import StrengthPredictor
 from poker_embeddings.poker_utils.datasets import UCIrvineDataset
-from sklearn.metrics import classification_report, confusion_matrix
 import yaml
 
 def parse_args():
@@ -25,64 +24,59 @@ def train_model(model, trainloader, optimizer, scheduler=None, device=None,
                 valloader=None, class_weights=None, epochs=50,
                 leftoff=0, save=False, save_dir="./model_weights/hand_rank_predictor", save_interval=None):
 
+    def weighted_mae_loss(preds, y, class_weights):
+        hand_ranks = y[:, 0]
+        treys_scores = y[:, 1].float()
+        if class_weights is not None:
+            weights = class_weights[hand_ranks]
+            errors = torch.abs(preds - treys_scores)
+            return (errors * weights).mean()
+        else:
+            return torch.abs(preds - treys_scores).mean()
     train_losses = []
     val_losses = []
-    train_accuracies = []
-    val_accuracies = []
+
     try:
         for epoch in range(epochs):
             tot_train_loss = 0
-            correct_train = 0
-            total_train = 0
 
             model.train()
             for batch_data in trainloader:
                 batch_data = batch_data.to(device)
                 optimizer.zero_grad()
 
-                logits = model(batch_data)
+                output = model(batch_data)
 
-                batch_loss = F.cross_entropy(logits, batch_data.y[:,0], weight=class_weights)
+                batch_loss = weighted_mae_loss(output, batch_data.y, class_weights)
                 batch_loss.backward()
                 optimizer.step()
 
                 tot_train_loss += batch_loss.item()
-                preds = logits.argmax(dim=1)
-                correct_train += (preds == batch_data.y[:,0]).sum().item()
-                total_train += batch_data.y.size(0)
 
             avg_train_loss = tot_train_loss / len(trainloader)
-            train_acc = correct_train / total_train
             train_losses.append(avg_train_loss)
-            train_accuracies.append(train_acc)
+
 
             if valloader is not None:
                 model.eval()
                 tot_val_loss = 0
-                correct_val = 0
-                total_val = 0
 
                 with torch.no_grad():
                     for batch_data in valloader:
                         batch_data = batch_data.to(device)
-                        logits = model(batch_data)
-                        batch_loss = F.cross_entropy(logits, batch_data.y[:,0], weight=class_weights)
+                        output = model(batch_data)
+                        batch_loss = weighted_mae_loss(output, batch_data.y, class_weights)
 
                         tot_val_loss += batch_loss.item()
-                        preds = logits.argmax(dim=1)
-                        correct_val += (preds == batch_data.y[:,0]).sum().item()
-                        total_val += batch_data.y.size(0)
 
                 avg_val_loss = tot_val_loss / len(valloader)
-                val_acc = correct_val / total_val
                 val_losses.append(avg_val_loss)
-                val_accuracies.append(val_acc)
 
             if valloader is not None:
-                print(f"Epoch {epoch+1}/{epochs}, Train Loss: {avg_train_loss:.4f}, Train Acc: {train_acc:.4f}, "
-                      f"Val Loss: {avg_val_loss:.4f}, Val Acc: {val_acc:.4f}")
+                print(f"Epoch {epoch+1}/{epochs}, Train Loss: {avg_train_loss:.4f}"
+                      f"Val Loss: {avg_val_loss:.4f}")
             else:
-                print(f"Epoch {epoch+1}/{epochs}, Train Loss: {avg_train_loss:.4f}, Train Acc: {train_acc:.4f}")
+                print(f"Epoch {epoch+1}/{epochs}, Train Loss: {avg_train_loss:.4f}")
             if save:
                 if (epoch + 1) % save_interval == 0:
                     torch.save(model.state_dict(), os.path.join(save_dir, f"hand_rank_predictor{leftoff+epoch+1}.pth"))
@@ -97,35 +91,9 @@ def train_model(model, trainloader, optimizer, scheduler=None, device=None,
     finally:
         if valloader is not None:
             return {"train_loss":train_losses,
-                    "val_loss":val_losses,
-                    "train_accuracy":train_accuracies,
-                    "val_accuracy":val_accuracies}
+                    "val_loss":val_losses}
         else:
-            return {'train_loss':train_losses, "train_accuracy":train_accuracies}
-
-def get_classification_report(model, dataloader, device=None):
-    all_preds = []
-    all_labels = []
-    all_indices = []
-    class_names = [
-        "nothing", "one_pair", "two_pair", "three_of_a_kind", "straight",
-        "flush", "full_house", "four_of_a_kind", "straight_flush", "royal_flush"
-        ]
-    model.eval()
-    with torch.no_grad():
-        for i, batch_data in enumerate(dataloader):
-            batch_data = batch_data.to(device)
-
-            logits = model(batch_data)
-            preds = logits.argmax(dim=1)
-            all_preds.append(preds.cpu())
-            all_labels.append(batch_data.y.cpu())
-            all_indices.extend(range(i * dataloader.batch_size, (i + 1) * dataloader.batch_size))
-    all_preds = torch.cat(all_preds)
-    all_labels = torch.cat(all_labels)
-    report = classification_report(all_labels, all_preds, target_names=class_names, zero_division=0, output_dict=True)
-    cm = confusion_matrix(all_labels, all_preds)
-    return {'report':report, 'confusion_matrix':cm,'labels':all_labels,'pred':all_preds}
+            return {'train_loss':train_losses}
 
 
 if __name__ == "__main__":
@@ -171,9 +139,9 @@ if __name__ == "__main__":
         device = torch.device(cfg["training"]["device"])
 
     model_param_cfg = cfg["model"]["params"]
-    model = HandClassifier(**model_param_cfg).to(device)
+    model = StrengthPredictor(**model_param_cfg).to(device)
     if cfg["model"]["weights_path"]:
-        model.load_state_dict(torch.load(cfg["model"]["weights_path"], weights_only=True))
+        model.load_state_dict(torch.load(cfg["model"]["weights_path"], weights_only=True), strict=False)
 
     opt_cfg = cfg["training"]["optimizer"]
     optimizer_class = getattr(optim, opt_cfg["type"])
@@ -218,23 +186,23 @@ if __name__ == "__main__":
             index=False
             )
 
-    pred_res = get_classification_report(model, valloader, device=device)
-    report = pd.DataFrame.from_dict(pred_res['report']).T
-    report.to_csv(
-        os.path.join(
-            cfg["results"]["save_dir"], f"hand_rank_predictor_classification_report_{cfg['training']['start_epoch'] + epochs}.csv")
-    )
-    report.rename({'Unnamed: 0':'class'},axis=1, inplace=True)
+    # pred_res = get_classification_report(model, valloader, device=device)
+    # report = pd.DataFrame.from_dict(pred_res['report']).T
+    # report.to_csv(
+    #     os.path.join(
+    #         cfg["results"]["save_dir"], f"hand_rank_predictor_classification_report_{cfg['training']['start_epoch'] + epochs}.csv")
+    # )
+    # report.rename({'Unnamed: 0':'class'},axis=1, inplace=True)
 
-    class_names = ["High Card", "Pair", "Two Pair", "Three of a Kind", "Straight", "Flush",
-                   "Full House", "Four of a Kind", "Straight Flush", "Royal Flush"]
+    # class_names = ["High Card", "Pair", "Two Pair", "Three of a Kind", "Straight", "Flush",
+    #                "Full House", "Four of a Kind", "Straight Flush", "Royal Flush"]
 
-    cm = pd.DataFrame(pred_res['confusion_matrix'], index=class_names, columns=class_names).reset_index()
-    cm.rename({'index':'class'}, axis=1, inplace=True)
-    cm.to_csv(
-        os.path.join(
-            cfg["results"]["save_dir"], f"hand_rank_predictor_confusion_matrix_{cfg['training']['start_epoch'] + epochs}.csv")
-    )
+    # cm = pd.DataFrame(pred_res['confusion_matrix'], index=class_names, columns=class_names).reset_index()
+    # cm.rename({'index':'class'}, axis=1, inplace=True)
+    # cm.to_csv(
+    #     os.path.join(
+    #         cfg["results"]["save_dir"], f"hand_rank_predictor_confusion_matrix_{cfg['training']['start_epoch'] + epochs}.csv")
+    # )
 
     with open(os.path.join(cfg["results"]["save_dir"], f"config_used.yaml"), "w") as f:
         yaml.safe_dump(cfg, f)

@@ -71,6 +71,7 @@ class EquityDiffDataset:
 
 class UCIrvineDataset(Dataset):
     def __init__(self, X, y, add_random_cards=True, use_card_ids=True, graph=True, normalize_x=True):
+
         self.X = X
         self.y = y
         self.add_random_cards = add_random_cards
@@ -93,7 +94,7 @@ class UCIrvineDataset(Dataset):
         cards_id = self.card_ids[idx]
         if self.add_random_cards:
             card_treys = self.card_treys[idx]
-            cards_id = self.sample_random_board(card_treys, cards_id, y['CLASS_str'])
+            cards_id, treys_score = self.sample_random_board(card_treys, cards_id, y['CLASS_str'])
 
         if not self.graph:
             cards_id = F.pad(cards_id, (0, 7 - len(cards_id)), value=-1)
@@ -111,7 +112,8 @@ class UCIrvineDataset(Dataset):
                 rank = rank / 12.0
                 suit = suit / 3.0
             x = torch.stack([rank, suit], dim=1)
-        data = self.create_graph(cards_id, x, self.y_CLASS[idx])
+
+        data = self.create_graph(cards_id, x, torch.tensor([[self.y_CLASS[idx], treys_score]], dtype=torch.long))
         return data
 
     def sample_random_board(self, used_treys, base_board, label_str):
@@ -120,19 +122,22 @@ class UCIrvineDataset(Dataset):
         board_extension_size = random.randint(0, 2)
 
         evaluator = self.evaluator
+        orig_t_rank = evaluator.evaluate([], used_list)
+
         if board_extension_size > 0:
             for attempt in range(10):
                 sampled = random.sample(remaining, board_extension_size)
                 full_hand = used_list + sampled
-                hand_rank = evaluator.get_rank_class(evaluator.evaluate([], full_hand))
+                t_rank = evaluator.evaluate([], full_hand)
+                hand_rank = evaluator.get_rank_class(t_rank)
                 if evaluator.class_to_string(hand_rank) == label_str:
                     sampled_ids = torch.tensor([self.card_int_to_id[card] for card in sampled])
                     full_board = torch.cat((base_board, sampled_ids), dim=0)
-                    return full_board
+                    return full_board, t_rank
             else:
-                return base_board
+                return base_board, orig_t_rank
         else:
-            return base_board
+            return base_board, orig_t_rank
 
     def create_graph(self, cards_ids, x, y):
         subgraph_edge_index, subgraph_edge_attr = query_subgraph(cards_ids, self.deck_edge_index, self.deck_edge_attr)

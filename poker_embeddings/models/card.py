@@ -79,3 +79,16 @@ class HandClassifier(nn.Module):
     def forward(self, data):
         hand_encoded = self.hand_encoder(data)
         return self.output_layer(hand_encoded)
+
+class StrengthPredictor(nn.Module):
+    def __init__(self, card_emb_dim=16, hidden_dim=16, out_dim=16, edge_attr_dim=2):
+        super().__init__()
+
+        self.hand_encoder = HandGNN(
+            card_emb_dim=card_emb_dim, hidden_dim=hidden_dim,
+            out_dim=out_dim, edge_attr_dim=edge_attr_dim)
+        self.output_layer = nn.Linear(out_dim, 1)
+
+    def forward(self, data):
+        hand_encoded = self.hand_encoder(data)
+        return self.output_layer(hand_encoded)
