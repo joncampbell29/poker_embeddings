@@ -1,0 +1,47 @@
+
+data:
+  X_path: "./data/uc_irvine/X.csv"
+  y_path: "./data/uc_irvine/y.csv"
+  test_size: 0.7
+
+dataloader:
+  batch_size: 512
+  num_workers: 10
+  pin_memory: true
+
+training:
+  optimizer:
+    type: "Adam"
+    lr: 0.0001
+    weight_decay: 0.0
+
+  scheduler:
+    type: null
+    step_size: null
+    gamma: null
+    use_scheduler: null
+
+  device: "cuda"
+  epochs: 50
+  save_weights: true
+  start_epoch: 175
+  save_interval: 25
+  val_during_training: false
+
+model:
+  params:
+    rank_embedding_dim: 8
+    suit_embedding_dim: 8
+    hidden_dim: 16
+    edge_attr_dim: 2
+    node_mlp_layers: 2
+    gnn_layers: 2
+    reduction: "mean"
+    out_dim: 16
+  weights_path: "model_weights/hand_rank_model/hand_rank_predictor275.pth"
+  save_dir: "./model_weights/hand_rank_model"
+
+results:
+  save_dir: "./training_results/hand_rank_model/run4"
+
+class_weights_path: "./data/uc_irvine/class_weights.pt"

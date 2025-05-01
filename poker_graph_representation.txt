@@ -1,0 +1,36 @@
+Poker AI Sketch
+
+
+Sketch of Texas hold 'em poker card representation as a graph
+Background
+- 52 cards each as nodes
+- fully connected graph
+
+Graph Restrictions:
+	- no duplicate cards in the graph (ex. the graph cannot have 2 Ah's)
+
+Node, edge level important characteristics:
+- Node level important characteristics
+	- rank of the card. higher rank hands are stronger
+	- suit of the card (important for when 2 nodes are connected)
+    - location of card (hole card, board card, still in deck)
+        - cards still in deck have potential and is valuable information. What is shared between players (board cards) is also valuable information
+    - Node features = [rank(0-12), suit(0-3), in_hand(0,1), on_board(0,1)]
+- Edge/Connection level important characteristics
+	- if the 2 nodes are the same suit (same suit is stronger, flush potential)
+	- if the 2 nodes are close in rank (note ace can be low straight or high straigh so not necessarily close in rank)
+    - edge features = [suited(0,1), connectedness (0-5)]
+        - For connectedness it is only strong in the context of a straight which is only 5 cards so cards beyond that are 0 for connected, 4 for next to each other, 5 for pairs
+- Graph level important characteristics
+    - Number of cards on board and in hand vs number of cards left in deck
+    - graph features = [num_on_board_and_hand, num_left_in_deck]
+
+
+Domain Specific Keys:
+- ordering does not matter when cards on the board are observed
+	- once a card comes on the turn the information that it came on the turn is useless
+- the number of cards left to come is important (with just hole cards and flop there is more potential for your hand to improve)
+	- with all cards out there (2 in hand, 5 on the board) there is no potential for improvement your hand is what it is. Nothing else matters except the current/final strength of your hand and the decision you are facing (bet, raise, fold)
+
+This graph representation will be combined with other game state information like number of players, stack sizes, player priors, etc.
+for decision making downstream tasks.

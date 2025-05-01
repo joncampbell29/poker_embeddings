@@ -110,13 +110,14 @@ def create_deck_graph(normalize: bool=True)->Tuple[torch.Tensor, torch.Tensor]:
         suit_j = j % 4
 
         distance = card_distance((i, j))
+        connectedness = 5 - distance if distance <= 5 else 0
         if normalize:
             dist_weight = (11 - distance) / 11  # scale: closer ranks → higher weight
         else:
             dist_weight = distance
         suited = int(suit_i == suit_j)
 
-        edge_attr[idx, 0] = dist_weight
+        edge_attr[idx, 0] = connectedness # dist_weight
         edge_attr[idx, 1] = suited
 
     return edge_index, edge_attr
@@ -139,3 +140,41 @@ def query_subgraph(card_ids: torch.Tensor,
     sub_edge_index = torch.stack([new_src, new_dst], dim=0)
 
     return sub_edge_index, sub_edge_attr
+
+def create_deck_graph_new():
+    '''
+    Creates a fully connected graph of all 52 cards in a deck.
+    Edge attributes are 0,1 for suitedness and inverse max scaling for connectedness
+    if normalize is true, otherwise raw card distance
+
+    x = [rank, suit, in_hand, on_board]
+    edge_attr = [connectedness, suited]
+    '''
+    edge_index = fully_connected_edge_index(52)
+    num_edges = edge_index.shape[1]
+    edge_attr = torch.zeros((num_edges, 2), dtype=torch.float)
+    x = torch.zeros(52, 2, dtype=torch.float32)
+    x[:, 0] = torch.tensor(range(52)) // 4
+    x[:, 1] = torch.tensor(range(52)) % 4
+
+    for idx in range(num_edges):
+        i, j = edge_index[:, idx]
+
+        suit_i = i % 4
+        suit_j = j % 4
+
+        distance = card_distance((i, j))
+        connectedness = 5 - distance if distance <= 5 else 0
+
+        suited = int(suit_i == suit_j)
+
+        edge_attr[idx, 0] = connectedness
+        edge_attr[idx, 1] = suited
+
+    return x, edge_index, edge_attr
+
+def create_hand_board_features(cards_in_hand: torch.Tensor, cards_on_board: torch.Tensor):
+    features = torch.zeros(52, 2, dtype=torch.float32)
+    features[cards_in_hand, 0] = 1
+    features[cards_on_board, 1] = 1
+    return features

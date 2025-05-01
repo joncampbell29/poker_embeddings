@@ -70,7 +70,7 @@ class EquityDiffDataset:
         )
 
 class UCIrvineDataset(Dataset):
-    def __init__(self, X, y, add_random_cards=True, use_card_ids=True, graph=True, normalize_x=True):
+    def __init__(self, X, y, add_random_cards=True, use_card_ids=True, graph=True, normalize_x=False):
 
         self.X = X
         self.y = y

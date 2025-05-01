@@ -1,0 +1,11 @@
+,class,High Card,Pair,Two Pair,Three of a Kind,Straight,Flush,Full House,Four of a Kind,Straight Flush,Royal Flush
+0,High Card,356051,1,0,0,3539,0,0,0,0,0
+1,Pair,0,301504,0,64,1600,0,0,0,0,0
+2,Two Pair,0,0,34142,0,38,0,0,0,0,0
+3,Three of a Kind,0,0,0,15142,2,0,0,0,0,0
+4,Straight,0,0,0,3,2781,0,0,0,0,0
+5,Flush,0,0,0,0,0,1428,0,0,7,0
+6,Full House,0,0,0,0,0,0,1022,0,0,0
+7,Four of a Kind,0,0,0,0,0,0,1,164,0,0
+8,Straight Flush,0,0,0,0,0,2,0,0,10,0
+9,Royal Flush,0,0,0,0,0,1,0,0,5,0
