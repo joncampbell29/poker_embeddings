@@ -93,7 +93,7 @@ def fully_connected_edge_index(num_nodes: int)-> torch.Tensor:
     edge_index = torch.stack([row[mask], col[mask]], dim=0)
     return edge_index
 
-def create_deck_graph(normalize: bool=True)->Tuple[torch.Tensor, torch.Tensor]:
+def create_deck_graph()->Tuple[torch.Tensor, torch.Tensor]:
     '''
     Creates a fully connected graph of all 52 cards in a deck.
     Edge attributes are 0,1 for suitedness and inverse max scaling for connectedness
@@ -111,13 +111,9 @@ def create_deck_graph(normalize: bool=True)->Tuple[torch.Tensor, torch.Tensor]:
 
         distance = card_distance((i, j))
         connectedness = 5 - distance if distance <= 5 else 0
-        if normalize:
-            dist_weight = (11 - distance) / 11  # scale: closer ranks → higher weight
-        else:
-            dist_weight = distance
         suited = int(suit_i == suit_j)
 
-        edge_attr[idx, 0] = connectedness # dist_weight
+        edge_attr[idx, 0] = connectedness
         edge_attr[idx, 1] = suited
 
     return edge_index, edge_attr

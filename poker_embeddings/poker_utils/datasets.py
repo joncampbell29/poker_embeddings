@@ -87,7 +87,7 @@ class UCIrvineDataset(Dataset):
         self.card_treys = self.X.filter(regex='treys').to_numpy()
         self.y_CLASS = torch.tensor(self.y['CLASS'].to_numpy(), dtype=torch.long)
 
-        self.deck_edge_index, self.deck_edge_attr = create_deck_graph(normalize=True)
+        self.deck_edge_index, self.deck_edge_attr = create_deck_graph()
 
     def __getitem__(self, idx):
         y = self.y.iloc[idx]
@@ -114,7 +114,7 @@ class UCIrvineDataset(Dataset):
             x = torch.stack([rank, suit], dim=1)
 
         data = self.create_graph(cards_id, x, torch.tensor([[self.y_CLASS[idx], treys_score]], dtype=torch.long))
-        return data
+        return data # x = [rank, suit], edges = []
 
     def sample_random_board(self, used_treys, base_board, label_str):
         used_list = list(used_treys)
