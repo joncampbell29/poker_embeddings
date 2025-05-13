@@ -1,0 +1,187 @@
+import torch
+from torch_geometric.data import Data, Batch
+
+DECK_DICT = {
+    0: '2c',
+    1: '2d',
+    2: '2h',
+    3: '2s',
+    4: '3c',
+    5: '3d',
+    6: '3h',
+    7: '3s',
+    8: '4c',
+    9: '4d',
+    10: '4h',
+    11: '4s',
+    12: '5c',
+    13: '5d',
+    14: '5h',
+    15: '5s',
+    16: '6c',
+    17: '6d',
+    18: '6h',
+    19: '6s',
+    20: '7c',
+    21: '7d',
+    22: '7h',
+    23: '7s',
+    24: '8c',
+    25: '8d',
+    26: '8h',
+    27: '8s',
+    28: '9c',
+    29: '9d',
+    30: '9h',
+    31: '9s',
+    32: 'Tc',
+    33: 'Td',
+    34: 'Th',
+    35: 'Ts',
+    36: 'Jc',
+    37: 'Jd',
+    38: 'Jh',
+    39: 'Js',
+    40: 'Qc',
+    41: 'Qd',
+    42: 'Qh',
+    43: 'Qs',
+    44: 'Kc',
+    45: 'Kd',
+    46: 'Kh',
+    47: 'Ks',
+    48: 'Ac',
+    49: 'Ad',
+    50: 'Ah',
+    51: 'As',
+    }
+
+_card_to_idx = {card: idx for idx, card in DECK_DICT.items()}
+def card_distance(hands) -> int:
+    '''
+    Takes a iterable of 2 cards as there deck index values or as strings
+    and returns the card distance
+    '''
+    if hands[0] == hands[1]: return 0
+    def calc_dist(rank1,rank2):
+        standard_sep = abs(rank1 - rank2)
+        if 12 not in (rank1, rank2):
+            return standard_sep
+        if rank1 == 12:
+            alt_sep = abs(rank2 + 1)
+            return min(standard_sep, alt_sep)
+        elif rank2 == 12:
+            alt_sep = abs(rank1 + 1)
+            return min(standard_sep, alt_sep)
+
+    if isinstance(hands[0], str):
+        rank1, rank2 = _card_to_idx[hands[0]] // 4, _card_to_idx[hands[1]] // 4
+        return calc_dist(rank1,rank2)
+    else:
+        rank1, rank2 = hands[0] // 4, hands[1] // 4
+        return calc_dist(rank1,rank2)
+
+
+def fully_connected_edge_index(num_nodes: int)-> torch.Tensor:
+    '''
+    Creates the edge index used by pytorch based on the number of nodes for a graph
+    '''
+    row = torch.arange(num_nodes).repeat_interleave(num_nodes)
+    col = torch.arange(num_nodes).repeat(num_nodes)
+    mask = row != col
+    edge_index = torch.stack([row[mask], col[mask]], dim=0)
+    return edge_index
+
+def create_deck_graph():
+    '''
+    Creates a fully connected graph of all 52 cards in a deck.
+    Edge attributes are 0,1 for suitedness and inverse max scaling for connectedness
+    if normalize is true, otherwise raw card distance
+    '''
+    edge_index = fully_connected_edge_index(52)
+    num_edges = edge_index.shape[1]
+    edge_attr = torch.zeros((num_edges, 2), dtype=torch.float)
+
+    for idx in range(num_edges):
+        i, j = edge_index[:, idx]
+
+        suit_i = i % 4
+        suit_j = j % 4
+
+        distance = card_distance((i, j))
+        connectedness = 5 - distance if distance <= 5 else 0
+        suited = int(suit_i == suit_j)
+
+        edge_attr[idx, 0] = connectedness
+        edge_attr[idx, 1] = suited
+
+    return edge_index, edge_attr
+
+def query_subgraph(card_ids: torch.Tensor,
+                   full_edge_index: torch.Tensor,
+                   full_edge_attr: torch.Tensor):
+    '''
+    Creates a subgraph of the cards of choice from the full deck graph producted by create_deck_graph()
+    '''
+    sources = full_edge_index[0]
+    destinations = full_edge_index[1]
+    edge_mask = torch.isin(sources, card_ids) & torch.isin(destinations, card_ids)
+    sub_edge_index = full_edge_index[:, edge_mask]
+    sub_edge_attr = full_edge_attr[edge_mask]
+    card_id_to_new_idx = {card.item(): idx for idx, card in enumerate(card_ids)}
+    new_src = torch.tensor([card_id_to_new_idx[s.item()] for s in sub_edge_index[0]])
+    new_dst = torch.tensor([card_id_to_new_idx[d.item()] for d in sub_edge_index[1]])
+
+    sub_edge_index = torch.stack([new_src, new_dst], dim=0)
+
+    return sub_edge_index, sub_edge_attr
+
+def predict(hands, model, return_logits=True):
+    class_names = [
+        "high_card", "one_pair", "two_pair", "three_of_a_kind", "straight",
+        "flush", "full_house", "four_of_a_kind", "straight_flush", "royal_flush"
+        ]
+    deck_graph_edge_index, deck_graph_edge_attr = create_deck_graph()
+    if isinstance(hands, torch.Tensor):
+        if hands.dim() == 1:
+            hand_edge_index, hand_edge_attr = query_subgraph(hands, deck_graph_edge_index, deck_graph_edge_attr)
+            x = torch.stack([hands // 4, hands % 4], dim=1)
+            graph = Data(x=x, edge_index=hand_edge_index, edge_attr=hand_edge_attr)
+            graph = Batch.from_data_list([graph])
+        else:
+            graphs = []
+            for hand in hands:
+                hand_edge_index, hand_edge_attr = query_subgraph(hand, deck_graph_edge_index, deck_graph_edge_attr)
+                x = torch.stack([hand // 4, hand % 4], dim=1)
+                graph = Data(x=x, edge_index=hand_edge_index, edge_attr=hand_edge_attr)
+                graphs.append(graph)
+            graph = Batch.from_data_list(graphs)
+
+    elif isinstance(hands, list) and all(isinstance(hand, list) for hand in hands):
+
+        graphs = []
+        for hand in hands:
+            if isinstance(hand[0], str):
+                hand = torch.tensor([_card_to_idx[card] for card in hand])
+            else:
+                hand = torch.tensor(hand)
+
+            hand_edge_index, hand_edge_attr = query_subgraph(hand, deck_graph_edge_index, deck_graph_edge_attr)
+            x = torch.stack([hand // 4, hand % 4], dim=1)
+            graph = Data(x=x, edge_index=hand_edge_index, edge_attr=hand_edge_attr)
+            graphs.append(graph)
+        graph = Batch.from_data_list(graphs)
+    elif isinstance(hands, list):
+        hand = torch.tensor([_card_to_idx[card] for card in hands])
+        hand_edge_index, hand_edge_attr = query_subgraph(hand, deck_graph_edge_index, deck_graph_edge_attr)
+        x = torch.stack([hand // 4, hand % 4], dim=1)
+        graph = Data(x=x, edge_index=hand_edge_index, edge_attr=hand_edge_attr)
+        graph = Batch.from_data_list([graph])
+
+    with torch.no_grad():
+        logits = model(graph)
+    if return_logits:
+        return logits
+    else:
+        preds = logits.argmax(dim=1)
+        return [class_names[i.item()] for i in preds]

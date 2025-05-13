@@ -101,3 +101,31 @@ class HandClassifier(nn.Module):
         x = self.hand_encoder(data)
         x = self.final(x)
         return self.output_layer(x)
+
+class HandScorer(nn.Module):
+    def __init__(self,
+                 rank_embedding_dim=8,
+                 suit_embedding_dim=8,
+                 hidden_dim=16,
+                 edge_attr_dim=2,
+                 node_mlp_layers=2,
+                 gnn_layers=2,
+                 reduction='mean',
+                 out_dim=16):
+        super().__init__()
+        self.hand_encoder = HandGNN(
+            rank_embedding_dim=rank_embedding_dim, suit_embedding_dim=suit_embedding_dim, hidden_dim=hidden_dim,
+            edge_attr_dim=edge_attr_dim, node_mlp_layers=node_mlp_layers,
+            gnn_layers=gnn_layers, reduction=reduction)
+
+        self.final = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, out_dim)
+        )
+        self.output_layer = nn.Linear(out_dim, 1)
+
+    def forward(self, data):
+        x = self.hand_encoder(data)
+        x = self.final(x)
+        return self.output_layer(x).squeeze()

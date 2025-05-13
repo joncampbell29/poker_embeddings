@@ -1,0 +1,38 @@
+data:
+  X_path: ./data/uc_irvine/X.csv
+  test_size: 0.7
+  y_path: ./data/uc_irvine/y.csv
+dataloader:
+  batch_size: 512
+  num_workers: 10
+  pin_memory: true
+model:
+  params:
+    edge_attr_dim: 2
+    gnn_layers: 2
+    hidden_dim: 16
+    node_mlp_layers: 2
+    out_dim: 16
+    rank_embedding_dim: 8
+    reduction: mean
+    suit_embedding_dim: 8
+  save_dir: ./model_weights/hand_scorer
+  weights_path: ''
+results:
+  save_dir: ./training_results/hand_scorer/run1
+training:
+  device: cuda
+  epochs: 50
+  optimizer:
+    lr: 0.001
+    type: Adam
+    weight_decay: 0.0
+  save_interval: 25
+  save_weights: true
+  scheduler:
+    gamma: null
+    step_size: null
+    type: null
+    use_scheduler: null
+  start_epoch: 0
+  val_during_training: false

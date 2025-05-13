@@ -146,3 +146,23 @@ class UCIrvineDataset(Dataset):
 
     def __len__(self):
         return len(self.X)
+
+
+class PairwiseHandDataset(Dataset):
+    def __init__(self, base_dataset):
+        self.base_dataset = base_dataset
+        self.length = len(base_dataset)
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, idx1):
+        x1 = self.base_dataset[idx1]
+        ix2 = random.randint(0, self.length - 1)
+        while ix2 == idx1:
+            ix2 = random.randint(0, self.length - 1)
+        x2 = self.base_dataset[ix2]
+        score1 = x1.y[0,1].item()
+        score2 = x2.y[0,1].item()
+        label = 1 if score1 < score2 else -1 # Smaller is stronger in Treys
+        return x1, x2, label

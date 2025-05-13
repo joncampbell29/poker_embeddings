@@ -29,7 +29,7 @@ if __name__ == "__main__":
             return 1 # suited
         else:
             return 0 # offsuit
-
+    ev_data['EV_deviation'] = ev_data["EV"] - ev_data.groupby("hand")['EV'].transform("mean")
     ev_data['hand_type_id'] = ev_data['hand'].apply(get_hand_type)
     ev_data['position_id'] = ev_data['position'].map(position_mapping)
     ev_data['players_id'] = ev_data['players'] - 2

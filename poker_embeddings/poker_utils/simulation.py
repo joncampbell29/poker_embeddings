@@ -1,5 +1,5 @@
 import numpy as np
-from treys import Card, Evaluator
+from treys import Card, Evaluator, Deck
 from itertools import product
 import random
 from .hands import get_possible_hands
@@ -33,11 +33,11 @@ def simulate_hand_randrange(hand: str, evaluator, num_villans: int = 1, num_sims
 
     RANKS = '23456789TJQKA'
     SUITS = 'cdhs'
-    DECK = [Card.new(rank+suit) for rank, suit in product(RANKS, SUITS)]
+    deck = Deck()
 
     for _ in range(num_sims):
-        deck = DECK[:]
-        random.shuffle(deck)
+        # deck = DECK[:]
+        deck.shuffle()
         hero_sampled_hand = list(random.choice(hero_possible_treys)) # in format [12332, 93874]
         for card in hero_sampled_hand:
             deck.remove(card)
